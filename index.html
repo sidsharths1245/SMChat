@@ -15,41 +15,6 @@
       flex-direction: column;
     }
 
-    h2 {
-      text-align: center;
-      color: white;
-      background-color: #0084ff;
-      margin: 0;
-      padding: 15px;
-      font-weight: 500;
-    }
-
-    #user-select {
-      background-color: #f4f4f4;
-      padding: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 14px;
-    }
-
-    select {
-      font-size: 16px;
-      padding: 6px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-    }
-
-    button.clear-btn {
-      padding: 6px 10px;
-      background: red;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      font-size: 14px;
-      cursor: pointer;
-    }
-
     #typing {
       font-size: 12px;
       color: #555;
@@ -115,6 +80,14 @@
       gap: 6px;
       border-top: 1px solid #ccc;
       background-color: white;
+      align-items: center;
+    }
+
+    select {
+      font-size: 14px;
+      padding: 6px;
+      border-radius: 20px;
+      border: 1px solid #ccc;
     }
 
     #message {
@@ -161,23 +134,14 @@
   </style>
 </head>
 <body>
-  <h2>Shiv & Monika Chat 💬</h2>
-
-  <div id="user-select">
-    <div>
-      <label for="username">I am: </label>
-      <select id="username">
-        <option value="Shiv">Shiv</option>
-        <option value="Monika">Monika</option>
-      </select>
-    </div>
-    <button class="clear-btn" onclick="clearChat()">Clear Chat</button>
-  </div>
-
   <div id="typing"></div>
   <div id="messages"></div>
 
   <div id="input-area">
+    <select id="username">
+      <option value="Shiv">Shiv</option>
+      <option value="Monika">Monika</option>
+    </select>
     <input id="message" placeholder="Type a message" />
     <button onclick="sendMessage()">➤</button>
   </div>
@@ -188,7 +152,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
     import {
       getDatabase, ref, push, onChildAdded,
-      onValue, remove, set
+      onValue, set
     } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 
     const firebaseConfig = {
@@ -261,18 +225,6 @@
       document.getElementById("typing").textContent = snapshot.val() || "";
     });
 
-    window.clearChat = function () {
-      const user = document.getElementById("username").value;
-      if (user === "Shiv") {
-        if (confirm("Are you sure you want to clear the chat?")) {
-          remove(messagesRef);
-        }
-      } else {
-        alert("Only Shiv can clear the chat.");
-      }
-    };
-
-    // ✅ FIX: make sendMessage globally accessible
     window.sendMessage = sendMessage;
   </script>
 </body>

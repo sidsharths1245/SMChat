@@ -1,21 +1,19 @@
 <!DOCTYPE html>
-<html lang="="en">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Shiv & Monika Chat 💬</title>
   <style>
+    * {
+      box-sizing: border-box;
+    }
     html, body {
       height: 100%;
       margin: 0;
-      padding: 0;
-      overflow: hidden;
-    }
-    body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #e5ddd5;
-      display: flex;
-      flex-direction: column;
+      color: #000;
     }
     body.dark {
       background: #1e1e1e;
@@ -23,24 +21,33 @@
     }
 
     #chat-header {
-      padding: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 2;
       background: #0084ff;
       color: white;
+      padding: 14px;
       font-size: 18px;
-      font-weight: bold;
       text-align: center;
     }
     body.dark #chat-header {
       background: #222;
-      color: #eee;
     }
 
     #typing {
       font-size: 12px;
-      color: #555;
       text-align: center;
-      margin-top: 4px;
-      height: 14px;
+      margin: 6px 0;
+      color: #555;
+      height: 16px;
+    }
+
+    #chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      max-width: 700px;
+      margin: 0 auto;
     }
 
     #messages {
@@ -63,39 +70,40 @@
     }
 
     .msg {
-      padding: 10px 15px;
+      padding: 10px 14px;
       border-radius: 18px;
-      max-width: 80%;
-      word-wrap: break-word;
+      max-width: 75%;
       font-size: 15px;
+      word-wrap: break-word;
       position: relative;
       line-height: 1.4;
     }
-
     .blue {
       background-color: #0084ff;
-      color: #fff;
+      color: white;
       border-top-right-radius: 0;
     }
     .white {
-      background-color: #ffffff;
-      color: #111;
+      background-color: #fff;
+      color: black;
       border-top-left-radius: 0;
     }
 
     .timestamp {
-      font-size: 10px;
-      color: #bbb;
-      margin-top: 4px;
+      font-size: 11px;
       text-align: right;
+      margin-top: 4px;
+      color: #999;
     }
 
     #input-area {
+      position: sticky;
+      bottom: 0;
+      background-color: #fff;
       display: flex;
       padding: 10px;
-      gap: 6px;
       border-top: 1px solid #ccc;
-      background-color: white;
+      gap: 8px;
       align-items: center;
     }
     body.dark #input-area {
@@ -105,255 +113,201 @@
 
     #message {
       flex: 1;
-      font-size: 14px;
-      padding: 10px;
-      border-radius: 20px;
+      padding: 10px 14px;
+      font-size: 15px;
+      border-radius: 18px;
       border: 1px solid #ccc;
       outline: none;
     }
     body.dark #message {
-      background: #222;
-      color: #fff;
+      background-color: #222;
+      color: #eee;
       border: 1px solid #555;
     }
 
     button {
-      background: #0084ff;
-      border: none;
-      color: white;
       padding: 10px 16px;
-      font-size: 16px;
+      font-size: 18px;
+      background-color: #0084ff;
+      color: white;
+      border: none;
       border-radius: 50%;
       cursor: pointer;
     }
     button:hover {
-      background: #006fdd;
+      background-color: #006fdd;
     }
 
     @media (max-width: 600px) {
-      #messages {
-        padding: 8px;
-      }
       .msg {
         font-size: 14px;
         padding: 8px 12px;
+        max-width: 85%;
       }
       #message {
         font-size: 14px;
       }
       button {
+        font-size: 16px;
         padding: 10px;
+      }
+      #chat-header {
+        font-size: 16px;
+        padding: 12px;
       }
     }
   </style>
 </head>
 <body>
+<div id="chat-container">
   <div id="chat-header"><span id="chat-with"></span></div>
   <div id="typing"></div>
   <div id="messages"></div>
   <div id="input-area">
-    <input id="message" placeholder="Type a message" />
+    <input id="message" placeholder="Type a message"/>
     <button onclick="sendMessage()">➤</button>
   </div>
-  <audio id="notify-sound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_846a730e18.mp3" preload="auto"></audio>
+</div>
+<audio id="notify-sound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_846a730e18.mp3" preload="auto"></audio>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-    import {
-      getDatabase, ref, push, onChildAdded,
-      onValue, set, remove, update
-    } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+<script type="module">
+// -- Firebase config and chat logic --
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+import {
+  getDatabase, ref, push, onChildAdded, onValue, set, remove, update
+} from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyC3ewLzG9uzaie20gvJIsliDXnU4k2VjqM",
-      authDomain: "chat-b6996.firebaseapp.com",
-      databaseURL: "https://chat-b6996-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "chat-b6996",
-      storageBucket: "chat-b6996.appspot.com",
-      messagingSenderId: "859974637172",
-      appId: "1:859974637172:web:8f7db61698bec9f081e321"
-    };
+const firebaseConfig = {
+  apiKey: "AIzaSyC3ewLzG9uzaie20gvJIsliDXnU4k2VjqM",
+  authDomain: "chat-b6996.firebaseapp.com",
+  databaseURL: "https://chat-b6996-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "chat-b6996",
+  storageBucket: "chat-b6996.appspot.com",
+  messagingSenderId: "859974637172",
+  appId: "1:859974637172:web:8f7db61698bec9f081e321"
+};
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const messagesRef = ref(db, "messages");
-    const typingRef = ref(db, "typing");
-    const readRef = ref(db, "readReceipts");
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const messagesRef = ref(db, "messages");
+const typingRef = ref(db, "typing");
+const readRef = ref(db, "readReceipts");
 
-    let currentUser = "Monika";
-    let lastMessageId = null;
+let currentUser = "Monika";
+let lastMessageId = null;
 
-    function updateHeader() {
-      const chatWith = currentUser === "Monika" ? "Chatting with Shiv 💬" : "Chatting with Monika 💬";
-      document.getElementById("chat-with").textContent = chatWith;
-    }
+function updateHeader() {
+  document.getElementById("chat-with").textContent =
+    currentUser === "Monika" ? "Chatting with Shiv 💬" : "Chatting with Monika 💬";
+}
+if (localStorage.getItem("theme") === "dark") {
+  document.body.classList.add("dark");
+}
+updateHeader();
 
-    if (localStorage.getItem("theme") === "dark") {
-      document.body.classList.add("dark");
-    }
+const messageInput = document.getElementById("message");
+messageInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") sendMessage();
+  set(typingRef, currentUser + " is typing...");
+});
+messageInput.addEventListener("keyup", (e) => {
+  if (e.key !== "Enter") setTimeout(() => set(typingRef, ""), 1000);
+});
+
+function sendMessage() {
+  const text = messageInput.value.trim();
+  if (!text) return;
+
+  if (text === "#clear") {
+    remove(messagesRef);
+    remove(readRef);
+    messageInput.value = "";
+    return;
+  }
+  if (text === "#dark") {
+    document.body.classList.add("dark");
+    localStorage.setItem("theme", "dark");
+    messageInput.value = "";
+    return;
+  }
+  if (text === "#light") {
+    document.body.classList.remove("dark");
+    localStorage.setItem("theme", "light");
+    messageInput.value = "";
+    return;
+  }
+  if (text === "#switchshiv") {
+    const pin = prompt("Enter PIN to switch to Shiv:");
+    if (pin === "8483") {
+      currentUser = "Shiv";
+      updateHeader();
+      reloadMessages();
+    } else alert("Incorrect PIN.");
+    messageInput.value = "";
+    return;
+  }
+  if (text === "#switchmonika") {
+    currentUser = "Monika";
     updateHeader();
+    reloadMessages();
+    messageInput.value = "";
+    return;
+  }
 
-    const messageInput = document.getElementById("message");
-    messageInput.addEventListener("keydown", e => {
-      if (e.key === "Enter") sendMessage();
-      set(typingRef, currentUser + " is typing...");
-    });
-    messageInput.addEventListener("keyup", e => {
-      if (e.key !== "Enter") {
-        setTimeout(() => set(typingRef, ""), 1000);
-      }
-    });
+  const now = new Date();
+  const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-    function sendMessage() {
-      const text = messageInput.value.trim();
-      if (!text) return;
+  push(messagesRef, {
+    name: currentUser,
+    text,
+    time,
+    timeDate: now.toISOString(),
+  });
+  set(typingRef, "");
+  messageInput.value = "";
+}
 
-      if (text === "#clear") {
-        remove(messagesRef);
-        remove(readRef);
-        messageInput.value = "";
-        return;
-      }
+function updateReadReceipt(msgId) {
+  if (document.visibilityState === "visible") {
+    update(readRef, { [currentUser]: msgId });
+  }
+}
 
-      if (text === "#dark") {
-        document.body.classList.add("dark");
-        localStorage.setItem("theme", "dark");
-        messageInput.value = "";
-        return;
-      }
-
-      if (text === "#light") {
-        document.body.classList.remove("dark");
-        localStorage.setItem("theme", "light");
-        messageInput.value = "";
-        return;
-      }
-
-      if (text === "#switchshiv") {
-        const pin = prompt("Enter PIN to switch to Shiv:");
-        if (pin === "8483") {
-          currentUser = "Shiv";
-          updateHeader();
-          reloadMessages();
-        } else {
-          alert("Incorrect PIN.");
-        }
-        messageInput.value = "";
-        return;
-      }
-
-      if (text === "#switchmonika") {
-        currentUser = "Monika";
-        updateHeader();
-        reloadMessages();
-        messageInput.value = "";
-        return;
-      }
-
-      const now = new Date();
-      const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-      push(messagesRef, {
-        name: currentUser,
-        text,
-        time,
-        timeDate: now.toISOString()
-      });
-
-      set(typingRef, "");
-      messageInput.value = "";
-    }
-
-    function updateReadReceipt(msgId) {
-      if (document.visibilityState === "visible") {
-        update(readRef, { [currentUser]: msgId });
+function renderSeenIndicator(msgId) {
+  onValue(readRef, (snapshot) => {
+    const reads = snapshot.val() || {};
+    const otherUser = currentUser === "Shiv" ? "Monika" : "Shiv";
+    if (reads[otherUser] === msgId) {
+      const lastBubble = document.querySelector('.msg-row.right:last-child .timestamp');
+      if (lastBubble && !lastBubble.textContent.includes("✓")) {
+        lastBubble.textContent += " ✓ Seen";
       }
     }
+  });
+}
 
-    function renderSeenIndicator(msgId) {
-      onValue(readRef, (snapshot) => {
-        const reads = snapshot.val() || {};
-        const otherUser = currentUser === "Shiv" ? "Monika" : "Shiv";
+function getDateLabel(dateStr) {
+  const msgDate = new Date(dateStr);
+  const now = new Date();
+  const isToday = msgDate.toDateString() === now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (isToday) return "Today";
+  if (msgDate.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return msgDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
-        if (reads[otherUser] === msgId) {
-          const lastBubble = document.querySelector('.msg-row.right:last-child .timestamp');
-          if (lastBubble && !lastBubble.textContent.includes("✓")) {
-            lastBubble.textContent += " ✓ Seen";
-          }
-        }
-      });
-    }
+function reloadMessages() {
+  const messages = document.getElementById("messages");
+  messages.innerHTML = "";
+  messages.setAttribute("data-last-date", "");
 
-    function getDateLabel(dateStr) {
-      const msgDate = new Date(dateStr);
-      const now = new Date();
-      const isToday = msgDate.toDateString() === now.toDateString();
-      const yesterday = new Date(now);
-      yesterday.setDate(now.getDate() - 1);
-      const isYesterday = msgDate.toDateString() === yesterday.toDateString();
-      if (isToday) return "Today";
-      if (isYesterday) return "Yesterday";
-      return msgDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-    }
-
-    function reloadMessages() {
-      const messages = document.getElementById("messages");
-      messages.innerHTML = "";
-      messages.setAttribute("data-last-date", "");
-
-      onValue(messagesRef, (snapshot) => {
-        messages.innerHTML = "";
-        messages.setAttribute("data-last-date", "");
-        snapshot.forEach(child => {
-          const msg = child.val();
-          const isCurrentUser = msg.name === currentUser;
-
-          const dateLabel = getDateLabel(msg.timeDate || new Date().toISOString());
-          const lastDateLabel = messages.getAttribute("data-last-date");
-          if (lastDateLabel !== dateLabel) {
-            const dateDiv = document.createElement("div");
-            dateDiv.textContent = dateLabel;
-            dateDiv.style.textAlign = "center";
-            dateDiv.style.fontSize = "12px";
-            dateDiv.style.color = "#888";
-            dateDiv.style.margin = "10px 0 4px";
-            messages.appendChild(dateDiv);
-            messages.setAttribute("data-last-date", dateLabel);
-          }
-
-          const msgRow = document.createElement("div");
-          msgRow.className = "msg-row " + (isCurrentUser ? "right" : "left");
-
-          const bubble = document.createElement("div");
-          bubble.className = "msg " + (isCurrentUser ? "blue" : "white");
-          bubble.innerHTML = `
-            <div>${msg.text}</div>
-            <div class="timestamp">${msg.time || ''}</div>
-          `;
-
-          msgRow.appendChild(bubble);
-          messages.appendChild(msgRow);
-
-          if (!isCurrentUser) {
-            updateReadReceipt(child.key);
-          } else {
-            renderSeenIndicator(child.key);
-          }
-        });
-        messages.scrollTop = messages.scrollHeight;
-      }, { onlyOnce: true });
-    }
-
-    onChildAdded(messagesRef, (data) => {
-      const msg = data.val();
+  onValue(messagesRef, (snapshot) => {
+    messages.innerHTML = "";
+    messages.setAttribute("data-last-date", "");
+    snapshot.forEach((child) => {
+      const msg = child.val();
       const isCurrentUser = msg.name === currentUser;
-
-      if (lastMessageId !== data.key && !isCurrentUser) {
-        document.getElementById("notify-sound").play();
-      }
-
-      lastMessageId = data.key;
-      const messages = document.getElementById("messages");
 
       const dateLabel = getDateLabel(msg.timeDate || new Date().toISOString());
       const lastDateLabel = messages.getAttribute("data-last-date");
@@ -375,31 +329,69 @@
       bubble.className = "msg " + (isCurrentUser ? "blue" : "white");
       bubble.innerHTML = `
         <div>${msg.text}</div>
-        <div class="timestamp">${msg.time || ''}</div>
+        <div class="timestamp">${msg.time || ""}</div>
       `;
 
       msgRow.appendChild(bubble);
       messages.appendChild(msgRow);
-      messages.scrollTop = messages.scrollHeight;
 
-      if (!isCurrentUser) {
-        updateReadReceipt(data.key);
-      } else {
-        renderSeenIndicator(data.key);
-      }
+      if (!isCurrentUser) updateReadReceipt(child.key);
+      else renderSeenIndicator(child.key);
     });
+    messages.scrollTop = messages.scrollHeight;
+  }, { onlyOnce: true });
+}
 
-    onValue(typingRef, (snapshot) => {
-      document.getElementById("typing").textContent = snapshot.val() || "";
-    });
+onChildAdded(messagesRef, (data) => {
+  const msg = data.val();
+  const isCurrentUser = msg.name === currentUser;
 
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        reloadMessages();
-      }
-    });
+  if (lastMessageId !== data.key && !isCurrentUser) {
+    document.getElementById("notify-sound").play();
+  }
+  lastMessageId = data.key;
 
-    window.sendMessage = sendMessage;
-  </script>
+  const messages = document.getElementById("messages");
+  const dateLabel = getDateLabel(msg.timeDate || new Date().toISOString());
+  const lastDateLabel = messages.getAttribute("data-last-date");
+  if (lastDateLabel !== dateLabel) {
+    const dateDiv = document.createElement("div");
+    dateDiv.textContent = dateLabel;
+    dateDiv.style.textAlign = "center";
+    dateDiv.style.fontSize = "12px";
+    dateDiv.style.color = "#888";
+    dateDiv.style.margin = "10px 0 4px";
+    messages.appendChild(dateDiv);
+    messages.setAttribute("data-last-date", dateLabel);
+  }
+
+  const msgRow = document.createElement("div");
+  msgRow.className = "msg-row " + (isCurrentUser ? "right" : "left");
+
+  const bubble = document.createElement("div");
+  bubble.className = "msg " + (isCurrentUser ? "blue" : "white");
+  bubble.innerHTML = `
+    <div>${msg.text}</div>
+    <div class="timestamp">${msg.time || ""}</div>
+  `;
+
+  msgRow.appendChild(bubble);
+  messages.appendChild(msgRow);
+  messages.scrollTop = messages.scrollHeight;
+
+  if (!isCurrentUser) updateReadReceipt(data.key);
+  else renderSeenIndicator(data.key);
+});
+
+onValue(typingRef, (snapshot) => {
+  document.getElementById("typing").textContent = snapshot.val() || "";
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") reloadMessages();
+});
+
+window.sendMessage = sendMessage;
+</script>
 </body>
 </html>

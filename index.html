@@ -210,7 +210,13 @@
       const now = new Date();
       const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      push(messagesRef, { name, text, time });
+      push(messagesRef, {
+        name,
+        text,
+        time,
+        timeDate: now.toISOString()
+      });
+
       set(typingRef, "");
       messageInput.value = "";
     }
@@ -237,6 +243,22 @@
       });
     }
 
+    function getDateLabel(dateStr) {
+      const msgDate = new Date(dateStr);
+      const now = new Date();
+
+      const isToday = msgDate.toDateString() === now.toDateString();
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      const isYesterday = msgDate.toDateString() === yesterday.toDateString();
+
+      if (isToday) return "Today";
+      if (isYesterday) return "Yesterday";
+
+      const options = { day: 'numeric', month: 'short', year: 'numeric' };
+      return msgDate.toLocaleDateString(undefined, options);
+    }
+
     onChildAdded(messagesRef, (data) => {
       const msg = data.val();
       const currentUser = usernameSelect.value;
@@ -247,6 +269,20 @@
       }
 
       lastMessageId = data.key;
+      const messages = document.getElementById("messages");
+
+      const dateLabel = getDateLabel(msg.timeDate || new Date().toISOString());
+      const lastDateLabel = messages.getAttribute("data-last-date");
+      if (lastDateLabel !== dateLabel) {
+        const dateDiv = document.createElement("div");
+        dateDiv.textContent = dateLabel;
+        dateDiv.style.textAlign = "center";
+        dateDiv.style.fontSize = "12px";
+        dateDiv.style.color = "#888";
+        dateDiv.style.margin = "10px 0 4px";
+        messages.appendChild(dateDiv);
+        messages.setAttribute("data-last-date", dateLabel);
+      }
 
       const msgRow = document.createElement("div");
       msgRow.className = "msg-row " + (isCurrentUser ? "right" : "left");
@@ -259,7 +295,6 @@
       `;
 
       msgRow.appendChild(bubble);
-      const messages = document.getElementById("messages");
       messages.appendChild(msgRow);
       messages.scrollTop = messages.scrollHeight;
 
@@ -274,7 +309,6 @@
       document.getElementById("typing").textContent = snapshot.val() || "";
     });
 
-    // PIN-protected user switch
     let previousUser = "Monika";
     usernameSelect.addEventListener("change", () => {
       const selected = usernameSelect.value;
@@ -293,16 +327,32 @@
       }
     });
 
-    // Reload messages
     function reloadMessages() {
       const messages = document.getElementById("messages");
       messages.innerHTML = "";
+      messages.setAttribute("data-last-date", "");
+
       onValue(messagesRef, (snapshot) => {
         messages.innerHTML = "";
+        messages.setAttribute("data-last-date", "");
+
         snapshot.forEach(child => {
           const msg = child.val();
           const currentUser = usernameSelect.value;
           const isCurrentUser = msg.name === currentUser;
+
+          const dateLabel = getDateLabel(msg.timeDate || new Date().toISOString());
+          const lastDateLabel = messages.getAttribute("data-last-date");
+          if (lastDateLabel !== dateLabel) {
+            const dateDiv = document.createElement("div");
+            dateDiv.textContent = dateLabel;
+            dateDiv.style.textAlign = "center";
+            dateDiv.style.fontSize = "12px";
+            dateDiv.style.color = "#888";
+            dateDiv.style.margin = "10px 0 4px";
+            messages.appendChild(dateDiv);
+            messages.setAttribute("data-last-date", dateLabel);
+          }
 
           const msgRow = document.createElement("div");
           msgRow.className = "msg-row " + (isCurrentUser ? "right" : "left");
@@ -327,7 +377,6 @@
       }, { onlyOnce: true });
     }
 
-    // Recheck read receipts when tab becomes visible
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
         reloadMessages();

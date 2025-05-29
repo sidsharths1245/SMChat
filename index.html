@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Two Person Chat</title>
+  <style>
+    body { font-family: sans-serif; max-width: 400px; margin: auto; }
+    #messages { border: 1px solid #ccc; height: 300px; overflow-y: scroll; padding: 5px; }
+    .msg { margin: 5px 0; }
+    .user1 { color: blue; }
+    .user2 { color: green; }
+  </style>
+</head>
+<body>
+  <h2>Simple Chat</h2>
+  <label>
+    Name:
+    <input id="username" placeholder="user1 or user2">
+  </label>
+  <div id="messages"></div>
+  <input id="message" placeholder="Type a message">
+  <button onclick="sendMessage()">Send</button>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+
+    const firebaseConfig = {
+  apiKey: "AIzaSyC3ewLzG9uzaie20gvJIsliDXnU4k2VjqM",
+  authDomain: "chat-b6996.firebaseapp.com",
+  databaseURL: "https://chat-b6996-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "chat-b6996",
+  storageBucket: "chat-b6996.firebasestorage.app",
+  messagingSenderId: "859974637172",
+  appId: "1:859974637172:web:8f7db61698bec9f081e321"
+};
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const messagesRef = ref(db, "messages");
+
+    document.getElementById("message").addEventListener("keydown", e => {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    function sendMessage() {
+      const name = document.getElementById("username").value.trim();
+      const text = document.getElementById("message").value.trim();
+      if (!name || !text) return;
+      push(messagesRef, { name, text });
+      document.getElementById("message").value = "";
+    }
+
+    onChildAdded(messagesRef, (data) => {
+      const msg = data.val();
+      const div = document.createElement("div");
+      div.className = "msg " + (msg.name === "user1" ? "user1" : "user2");
+      div.textContent = `${msg.name}: ${msg.text}`;
+      document.getElementById("messages").appendChild(div);
+      document.getElementById("messages").scrollTop = messages.scrollHeight;
+    });
+  </script>
+</body>
+</html>

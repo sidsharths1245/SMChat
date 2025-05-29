@@ -82,21 +82,18 @@
       background-color: #333;
       border-top: 1px solid #555;
     }
-    select, #message {
+    #message {
+      flex: 1;
       font-size: 14px;
       padding: 10px;
       border-radius: 20px;
       border: 1px solid #ccc;
       outline: none;
     }
-    body.dark select,
     body.dark #message {
       background: #222;
       color: #fff;
       border: 1px solid #555;
-    }
-    #message {
-      flex: 1;
     }
     button {
       background: #0084ff;
@@ -131,10 +128,6 @@
   <div id="typing"></div>
   <div id="messages"></div>
   <div id="input-area">
-    <select id="username">
-      <option value="Shiv">Shiv</option>
-      <option value="Monika" selected>Monika</option>
-    </select>
     <input id="message" placeholder="Type a message" />
     <button onclick="sendMessage()">➤</button>
   </div>
@@ -163,19 +156,17 @@
     const typingRef = ref(db, "typing");
     const readRef = ref(db, "readReceipts");
 
+    let currentUser = "Monika";
     let lastMessageId = null;
-    const usernameSelect = document.getElementById("username");
 
-    // Theme
     if (localStorage.getItem("theme") === "dark") {
       document.body.classList.add("dark");
     }
 
-    // Typing
     const messageInput = document.getElementById("message");
     messageInput.addEventListener("keydown", e => {
       if (e.key === "Enter") sendMessage();
-      set(typingRef, usernameSelect.value + " is typing...");
+      set(typingRef, currentUser + " is typing...");
     });
     messageInput.addEventListener("keyup", e => {
       if (e.key !== "Enter") {
@@ -183,27 +174,48 @@
       }
     });
 
-    // Send Message
     function sendMessage() {
-      const name = usernameSelect.value;
       const text = messageInput.value.trim();
       if (!text) return;
 
+      // Special commands
       if (text === "#clear") {
         remove(messagesRef);
         remove(readRef);
+        messageInput.value = "";
         return;
       }
 
       if (text === "#dark") {
         document.body.classList.add("dark");
         localStorage.setItem("theme", "dark");
+        messageInput.value = "";
         return;
       }
 
       if (text === "#light") {
         document.body.classList.remove("dark");
         localStorage.setItem("theme", "light");
+        messageInput.value = "";
+        return;
+      }
+
+      if (text === "#switchshiv") {
+        const pin = prompt("Enter PIN to switch to Shiv:");
+        if (pin === "8483") {
+          currentUser = "Shiv";
+          reloadMessages();
+        } else {
+          alert("Incorrect PIN.");
+        }
+        messageInput.value = "";
+        return;
+      }
+
+      if (text === "#switchmonika") {
+        currentUser = "Monika";
+        reloadMessages();
+        messageInput.value = "";
         return;
       }
 
@@ -211,7 +223,7 @@
       const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
       push(messagesRef, {
-        name,
+        name: currentUser,
         text,
         time,
         timeDate: now.toISOString()
@@ -222,17 +234,15 @@
     }
 
     function updateReadReceipt(msgId) {
-      const user = usernameSelect.value;
       if (document.visibilityState === "visible") {
-        update(readRef, { [user]: msgId });
+        update(readRef, { [currentUser]: msgId });
       }
     }
 
     function renderSeenIndicator(msgId) {
       onValue(readRef, (snapshot) => {
         const reads = snapshot.val() || {};
-        const user = usernameSelect.value;
-        const otherUser = user === "Shiv" ? "Monika" : "Shiv";
+        const otherUser = currentUser === "Shiv" ? "Monika" : "Shiv";
 
         if (reads[otherUser] === msgId) {
           const lastBubble = document.querySelector('.msg-row.right:last-child .timestamp');
@@ -246,22 +256,65 @@
     function getDateLabel(dateStr) {
       const msgDate = new Date(dateStr);
       const now = new Date();
-
       const isToday = msgDate.toDateString() === now.toDateString();
       const yesterday = new Date(now);
       yesterday.setDate(now.getDate() - 1);
       const isYesterday = msgDate.toDateString() === yesterday.toDateString();
-
       if (isToday) return "Today";
       if (isYesterday) return "Yesterday";
+      return msgDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    }
 
-      const options = { day: 'numeric', month: 'short', year: 'numeric' };
-      return msgDate.toLocaleDateString(undefined, options);
+    function reloadMessages() {
+      const messages = document.getElementById("messages");
+      messages.innerHTML = "";
+      messages.setAttribute("data-last-date", "");
+
+      onValue(messagesRef, (snapshot) => {
+        messages.innerHTML = "";
+        messages.setAttribute("data-last-date", "");
+        snapshot.forEach(child => {
+          const msg = child.val();
+          const isCurrentUser = msg.name === currentUser;
+
+          const dateLabel = getDateLabel(msg.timeDate || new Date().toISOString());
+          const lastDateLabel = messages.getAttribute("data-last-date");
+          if (lastDateLabel !== dateLabel) {
+            const dateDiv = document.createElement("div");
+            dateDiv.textContent = dateLabel;
+            dateDiv.style.textAlign = "center";
+            dateDiv.style.fontSize = "12px";
+            dateDiv.style.color = "#888";
+            dateDiv.style.margin = "10px 0 4px";
+            messages.appendChild(dateDiv);
+            messages.setAttribute("data-last-date", dateLabel);
+          }
+
+          const msgRow = document.createElement("div");
+          msgRow.className = "msg-row " + (isCurrentUser ? "right" : "left");
+
+          const bubble = document.createElement("div");
+          bubble.className = "msg " + (isCurrentUser ? "blue" : "white");
+          bubble.innerHTML = `
+            <div>${msg.text}</div>
+            <div class="timestamp">${msg.time || ''}</div>
+          `;
+
+          msgRow.appendChild(bubble);
+          messages.appendChild(msgRow);
+
+          if (!isCurrentUser) {
+            updateReadReceipt(child.key);
+          } else {
+            renderSeenIndicator(child.key);
+          }
+        });
+        messages.scrollTop = messages.scrollHeight;
+      }, { onlyOnce: true });
     }
 
     onChildAdded(messagesRef, (data) => {
       const msg = data.val();
-      const currentUser = usernameSelect.value;
       const isCurrentUser = msg.name === currentUser;
 
       if (lastMessageId !== data.key && !isCurrentUser) {
@@ -308,74 +361,6 @@
     onValue(typingRef, (snapshot) => {
       document.getElementById("typing").textContent = snapshot.val() || "";
     });
-
-    let previousUser = "Monika";
-    usernameSelect.addEventListener("change", () => {
-      const selected = usernameSelect.value;
-      if (selected === "Shiv") {
-        const pin = prompt("Enter PIN to switch to Shiv:");
-        if (pin !== "8483") {
-          alert("Incorrect PIN. Staying as Monika.");
-          usernameSelect.value = "Monika";
-        } else {
-          previousUser = "Shiv";
-          reloadMessages();
-        }
-      } else {
-        previousUser = "Monika";
-        reloadMessages();
-      }
-    });
-
-    function reloadMessages() {
-      const messages = document.getElementById("messages");
-      messages.innerHTML = "";
-      messages.setAttribute("data-last-date", "");
-
-      onValue(messagesRef, (snapshot) => {
-        messages.innerHTML = "";
-        messages.setAttribute("data-last-date", "");
-
-        snapshot.forEach(child => {
-          const msg = child.val();
-          const currentUser = usernameSelect.value;
-          const isCurrentUser = msg.name === currentUser;
-
-          const dateLabel = getDateLabel(msg.timeDate || new Date().toISOString());
-          const lastDateLabel = messages.getAttribute("data-last-date");
-          if (lastDateLabel !== dateLabel) {
-            const dateDiv = document.createElement("div");
-            dateDiv.textContent = dateLabel;
-            dateDiv.style.textAlign = "center";
-            dateDiv.style.fontSize = "12px";
-            dateDiv.style.color = "#888";
-            dateDiv.style.margin = "10px 0 4px";
-            messages.appendChild(dateDiv);
-            messages.setAttribute("data-last-date", dateLabel);
-          }
-
-          const msgRow = document.createElement("div");
-          msgRow.className = "msg-row " + (isCurrentUser ? "right" : "left");
-
-          const bubble = document.createElement("div");
-          bubble.className = "msg " + (isCurrentUser ? "blue" : "white");
-          bubble.innerHTML = `
-            <div>${msg.text}</div>
-            <div class="timestamp">${msg.time || ''}</div>
-          `;
-
-          msgRow.appendChild(bubble);
-          messages.appendChild(msgRow);
-
-          if (!isCurrentUser) {
-            updateReadReceipt(child.key);
-          } else {
-            renderSeenIndicator(child.key);
-          }
-        });
-        messages.scrollTop = messages.scrollHeight;
-      }, { onlyOnce: true });
-    }
 
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {

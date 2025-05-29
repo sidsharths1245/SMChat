@@ -59,13 +59,13 @@
       line-height: 1.4;
     }
 
-    .Shiv {
+    .incoming {
       background-color: #ffffff;
       color: #111;
       border-top-left-radius: 0;
     }
 
-    .Monika {
+    .outgoing {
       background-color: #0084ff;
       color: #fff;
       border-top-right-radius: 0;
@@ -144,7 +144,7 @@
   <div id="input-area">
     <select id="username">
       <option value="Shiv">Shiv</option>
-      <option value="Monika">Monika</option>
+      <option value="Monika" selected>Monika</option>
     </select>
     <input id="message" placeholder="Type a message" />
     <button onclick="sendMessage()">➤</button>
@@ -155,8 +155,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
     import {
-      getDatabase, ref, push, onChildAdded,
-      onValue, set
+      getDatabase, ref, push, onValue, set
     } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 
     const firebaseConfig = {
@@ -174,22 +173,28 @@
     const messagesRef = ref(db, "messages");
     const typingRef = ref(db, "typing");
 
+    let allMessages = {};
     let lastMessageId = null;
+    let previousUser = "Monika"; // initial user
 
-    document.getElementById("message").addEventListener("keydown", e => {
+    const usernameSelect = document.getElementById("username");
+    const messageInput = document.getElementById("message");
+    const messagesDiv = document.getElementById("messages");
+
+    messageInput.addEventListener("keydown", e => {
       if (e.key === "Enter") sendMessage();
-      set(typingRef, document.getElementById("username").value + " is typing...");
+      set(typingRef, usernameSelect.value + " is typing...");
     });
 
-    document.getElementById("message").addEventListener("keyup", e => {
+    messageInput.addEventListener("keyup", e => {
       if (e.key !== "Enter") {
         setTimeout(() => set(typingRef, ""), 1000);
       }
     });
 
     function sendMessage() {
-      const name = document.getElementById("username").value;
-      const text = document.getElementById("message").value.trim();
+      const name = usernameSelect.value;
+      const text = messageInput.value.trim();
       if (!text) return;
 
       const now = new Date();
@@ -197,36 +202,59 @@
 
       push(messagesRef, { name, text, time });
       set(typingRef, "");
-      document.getElementById("message").value = "";
+      messageInput.value = "";
     }
 
-    onChildAdded(messagesRef, (data) => {
-      const msg = data.val();
-      const currentUser = document.getElementById("username").value;
+    function renderMessages() {
+      messagesDiv.innerHTML = "";
+      const currentUser = usernameSelect.value;
 
-      if (lastMessageId !== data.key && msg.name !== currentUser) {
-        document.getElementById("notify-sound").play();
+      for (const id in allMessages) {
+        const msg = allMessages[id];
+        const isCurrentUser = msg.name === currentUser;
+
+        const msgRow = document.createElement("div");
+        msgRow.className = "msg-row " + (isCurrentUser ? "right" : "left");
+
+        const bubble = document.createElement("div");
+        bubble.className = "msg " + (isCurrentUser ? "outgoing" : "incoming");
+        bubble.innerHTML = `
+          <div>${msg.text}</div>
+          <div class="timestamp">${msg.time || ''}</div>
+        `;
+
+        msgRow.appendChild(bubble);
+        messagesDiv.appendChild(msgRow);
       }
-      lastMessageId = data.key;
 
-      const msgRow = document.createElement("div");
-      msgRow.className = "msg-row " + (msg.name === "Shiv" ? "left" : "right");
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
 
-      const bubble = document.createElement("div");
-      bubble.className = "msg " + msg.name;
-      bubble.innerHTML = `
-        <div>${msg.text}</div>
-        <div class="timestamp">${msg.time || ''}</div>
-      `;
-
-      msgRow.appendChild(bubble);
-      const messages = document.getElementById("messages");
-      messages.appendChild(msgRow);
-      messages.scrollTop = messages.scrollHeight;
+    onValue(messagesRef, snapshot => {
+      allMessages = snapshot.val() || {};
+      renderMessages();
     });
 
-    onValue(typingRef, (snapshot) => {
+    onValue(typingRef, snapshot => {
       document.getElementById("typing").textContent = snapshot.val() || "";
+    });
+
+    usernameSelect.addEventListener("change", () => {
+      const selected = usernameSelect.value;
+
+      if (selected === "Shiv") {
+        const pin = prompt("Enter PIN to switch to Shiv:");
+        if (pin !== "8483") {
+          alert("Incorrect PIN. Staying as Monika.");
+          usernameSelect.value = "Monika";
+        } else {
+          previousUser = "Shiv";
+          renderMessages();
+        }
+      } else {
+        previousUser = "Monika";
+        renderMessages();
+      }
     });
 
     window.sendMessage = sendMessage;

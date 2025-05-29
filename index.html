@@ -4,189 +4,200 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Shiv & Monika Chat</title>
-   <style>
-   * {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html, body {
-  height: 100%;
-  font-family: 'Segoe UI', Roboto, sans-serif;
-  background: #f5f5f5;
-  color: #111;
-  transition: background 0.3s, color 0.3s;
-}
-
-body.dark {
-  background: #121212;
-  color: #eee;
-}
-
-/* Header */
-#chat-header {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: transparent;
-  font-size: 17px;
-  padding: 16px 0;
-  text-align: center;
-  font-weight: 600;
-  color: #111;
-}
-body.dark #chat-header {
-  color: #fff;
-}
-
-/* Typing indicator */
-#typing {
-  font-size: 12px;
-  text-align: center;
-  color: #999;
-  margin: 4px 0;
-  height: 16px;
-}
-
-/* Main container */
-#chat-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  max-width: 600px;
-  margin: 0 auto;
-  padding: 0 10px;
-}
-
-/* Message area */
-#messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* Message row */
-.msg-row {
-  display: flex;
-}
-.left {
-  justify-content: flex-start;
-}
-.right {
-  justify-content: flex-end;
-}
-
-/* Message bubble */
-.msg {
-  padding: 10px 14px;
-  border-radius: 20px;
-  max-width: 75%;
-  font-size: 15px;
-  word-wrap: break-word;
-  position: relative;
-  line-height: 1.4;
-  background: #fff;
-  color: #111;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-}
-.left .msg {
-  background: #f0f0f0;
-}
-.right .msg {
-  background: #dcf8c6;
-}
-body.dark .msg {
-  background: #2a2a2a;
-  color: #eee;
-}
-body.dark .left .msg {
-  background: #1f1f1f;
-}
-body.dark .right .msg {
-  background: #303d2f;
-}
-
-/* Timestamps */
-.timestamp {
-  font-size: 11px;
-  text-align: right;
-  margin-top: 4px;
-  color: #888;
-}
-
-/* Input area */
-#input-area {
-  position: sticky;
-  bottom: 0;
-  background: transparent;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 0;
-}
-
-/* Input box */
-#message {
-  flex: 1;
-  padding: 10px 14px;
-  font-size: 15px;
-  border-radius: 18px;
-  border: 1px solid #ccc;
-  outline: none;
-  background: #fff;
-  transition: 0.3s;
-}
-body.dark #message {
-  background: #222;
-  border: 1px solid #555;
-  color: #eee;
-}
-
-/* Send button */
-button {
-  background: #fffc00;
-  border: none;
-  color: #111;
-  border-radius: 50%;
-  width: 44px;
-  height: 44px;
-  font-size: 20px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  cursor: pointer;
-  transition: 0.3s;
-}
-button:hover {
-  background: #e6e000;
-}
-
-/* Date labels */
-#messages > div[style*="text-align: center"] {
-  font-size: 11px;
-  color: #aaa;
-}
-
-/* Responsive tweaks */
-@media (max-width: 600px) {
-  #chat-header {
-    font-size: 16px;
-  }
-  .msg {
-    font-size: 14px;
-    padding: 9px 12px;
-  }
-  button {
-    width: 40px;
-    height: 40px;
-    font-size: 18px;
-  }
-}
-
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      height: 100%;
+      font-family: 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #111;
+      transition: background 0.3s, color 0.3s;
+    }
+    body.dark {
+      background: #121212;
+      color: #eee;
+    }
+    #chat-header {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: transparent;
+      font-size: 17px;
+      padding: 16px 0;
+      text-align: center;
+      font-weight: 600;
+      color: #111;
+    }
+    body.dark #chat-header {
+      color: #fff;
+    }
+    #typing {
+      font-size: 12px;
+      text-align: center;
+      color: #999;
+      margin: 4px 0;
+      height: 16px;
+    }
+    #chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 0 10px;
+    }
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .msg-row {
+      display: flex;
+    }
+    .left {
+      justify-content: flex-start;
+    }
+    .right {
+      justify-content: flex-end;
+    }
+    .msg {
+      padding: 10px 14px;
+      border-radius: 20px;
+      max-width: 75%;
+      font-size: 15px;
+      word-wrap: break-word;
+      position: relative;
+      line-height: 1.4;
+      background: #fff;
+      color: #111;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .left .msg {
+      background: #f0f0f0;
+    }
+    .right .msg {
+      background: #dcf8c6;
+    }
+    body.dark .msg {
+      background: #2a2a2a;
+      color: #eee;
+    }
+    body.dark .left .msg {
+      background: #1f1f1f;
+    }
+    body.dark .right .msg {
+      background: #303d2f;
+    }
+    .timestamp {
+      font-size: 11px;
+      text-align: right;
+      margin-top: 4px;
+      color: #888;
+    }
+    #input-area {
+      position: sticky;
+      bottom: 0;
+      background: transparent;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 12px 0;
+    }
+    #reply-preview {
+      display: none;
+      padding: 6px 10px;
+      font-size: 13px;
+      background: #eee;
+      border-left: 4px solid #999;
+      margin-bottom: 6px;
+      position: relative;
+    }
+    body.dark #reply-preview {
+      background: #2b2b2b;
+      border-color: #666;
+    }
+    #reply-preview span {
+      display: block;
+      max-width: 90%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #cancel-reply {
+      position: absolute;
+      right: 6px;
+      top: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .input-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #message {
+      flex: 1;
+      padding: 10px 14px;
+      font-size: 15px;
+      border-radius: 18px;
+      border: 1px solid #ccc;
+      outline: none;
+      background: #fff;
+      transition: 0.3s;
+    }
+    body.dark #message {
+      background: #222;
+      border: 1px solid #555;
+      color: #eee;
+    }
+    button {
+      background: #fffc00;
+      border: none;
+      color: #111;
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      font-size: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover {
+      background: #e6e000;
+    }
+    #messages > div[style*="text-align: center"] {
+      font-size: 11px;
+      color: #aaa;
+    }
+    @media (max-width: 600px) {
+      #chat-header {
+        font-size: 16px;
+      }
+      .msg {
+        font-size: 14px;
+        padding: 9px 12px;
+      }
+      button {
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+      }
+    }
+    .reply-to {
+      font-size: 12px;
+      color: #666;
+      border-left: 3px solid #ccc;
+      padding-left: 8px;
+      margin-bottom: 6px;
+    }
   </style>
-
 </head>
 <body>
 <div id="chat-container">
@@ -194,14 +205,16 @@ button:hover {
   <div id="typing"></div>
   <div id="messages"></div>
   <div id="input-area">
-    <input id="message" placeholder="Type a message"/>
-    <button onclick="sendMessage()">➤</button>
+    <div id="reply-preview"><span id="reply-text"></span><span id="cancel-reply">×</span></div>
+    <div class="input-row">
+      <input id="message" placeholder="Type a message"/>
+      <button onclick="sendMessage()">➤</button>
+    </div>
   </div>
 </div>
 <audio id="notify-sound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_846a730e18.mp3" preload="auto"></audio>
 
 <script type="module">
-// -- Firebase config and chat logic --
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
 import {
   getDatabase, ref, push, onChildAdded, onValue, set, remove, update
@@ -225,6 +238,7 @@ const readRef = ref(db, "readReceipts");
 
 let currentUser = "Monika";
 let lastMessageId = null;
+let replyTo = null;
 
 function updateHeader() {
   document.getElementById("chat-with").textContent =
@@ -292,10 +306,21 @@ function sendMessage() {
     text,
     time,
     timeDate: now.toISOString(),
+    reply: replyTo
   });
-  set(typingRef, "");
+
   messageInput.value = "";
+  set(typingRef, "");
+  clearReply();
 }
+
+function clearReply() {
+  replyTo = null;
+  document.getElementById("reply-preview").style.display = "none";
+  document.getElementById("reply-text").textContent = "";
+}
+
+document.getElementById("cancel-reply").onclick = clearReply;
 
 function updateReadReceipt(msgId) {
   if (document.visibilityState === "visible") {
@@ -336,52 +361,16 @@ function reloadMessages() {
     messages.innerHTML = "";
     messages.setAttribute("data-last-date", "");
     snapshot.forEach((child) => {
-      const msg = child.val();
-      const isCurrentUser = msg.name === currentUser;
-
-      const dateLabel = getDateLabel(msg.timeDate || new Date().toISOString());
-      const lastDateLabel = messages.getAttribute("data-last-date");
-      if (lastDateLabel !== dateLabel) {
-        const dateDiv = document.createElement("div");
-        dateDiv.textContent = dateLabel;
-        dateDiv.style.textAlign = "center";
-        dateDiv.style.fontSize = "12px";
-        dateDiv.style.color = "#888";
-        dateDiv.style.margin = "10px 0 4px";
-        messages.appendChild(dateDiv);
-        messages.setAttribute("data-last-date", dateLabel);
-      }
-
-      const msgRow = document.createElement("div");
-      msgRow.className = "msg-row " + (isCurrentUser ? "right" : "left");
-
-      const bubble = document.createElement("div");
-      bubble.className = "msg " + (isCurrentUser ? "blue" : "white");
-      bubble.innerHTML = `
-        <div>${msg.text}</div>
-        <div class="timestamp">${msg.time || ""}</div>
-      `;
-
-      msgRow.appendChild(bubble);
-      messages.appendChild(msgRow);
-
-      if (!isCurrentUser) updateReadReceipt(child.key);
-      else renderSeenIndicator(child.key);
+      appendMessage(child.key, child.val());
     });
     messages.scrollTop = messages.scrollHeight;
   }, { onlyOnce: true });
 }
 
-onChildAdded(messagesRef, (data) => {
-  const msg = data.val();
+function appendMessage(id, msg) {
   const isCurrentUser = msg.name === currentUser;
-
-  if (lastMessageId !== data.key && !isCurrentUser) {
-    document.getElementById("notify-sound").play();
-  }
-  lastMessageId = data.key;
-
   const messages = document.getElementById("messages");
+
   const dateLabel = getDateLabel(msg.timeDate || new Date().toISOString());
   const lastDateLabel = messages.getAttribute("data-last-date");
   if (lastDateLabel !== dateLabel) {
@@ -399,8 +388,15 @@ onChildAdded(messagesRef, (data) => {
   msgRow.className = "msg-row " + (isCurrentUser ? "right" : "left");
 
   const bubble = document.createElement("div");
-  bubble.className = "msg " + (isCurrentUser ? "blue" : "white");
-  bubble.innerHTML = `
+  bubble.className = "msg";
+  if (msg.reply) {
+    const replyDiv = document.createElement("div");
+    replyDiv.className = "reply-to";
+    replyDiv.textContent = msg.reply;
+    bubble.appendChild(replyDiv);
+  }
+
+  bubble.innerHTML += `
     <div>${msg.text}</div>
     <div class="timestamp">${msg.time || ""}</div>
   `;
@@ -409,8 +405,36 @@ onChildAdded(messagesRef, (data) => {
   messages.appendChild(msgRow);
   messages.scrollTop = messages.scrollHeight;
 
-  if (!isCurrentUser) updateReadReceipt(data.key);
-  else renderSeenIndicator(data.key);
+  bubble.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    replyTo = msg.text;
+    document.getElementById("reply-text").textContent = msg.text;
+    document.getElementById("reply-preview").style.display = "block";
+  });
+
+  let touchstartX = 0;
+  bubble.addEventListener("touchstart", e => {
+    touchstartX = e.changedTouches[0].screenX;
+  });
+  bubble.addEventListener("touchend", e => {
+    const deltaX = e.changedTouches[0].screenX - touchstartX;
+    if (Math.abs(deltaX) > 50) {
+      replyTo = msg.text;
+      document.getElementById("reply-text").textContent = msg.text;
+      document.getElementById("reply-preview").style.display = "block";
+    }
+  });
+
+  if (!isCurrentUser) updateReadReceipt(id);
+  else renderSeenIndicator(id);
+}
+
+onChildAdded(messagesRef, (data) => {
+  if (lastMessageId !== data.key && data.val().name !== currentUser) {
+    document.getElementById("notify-sound").play();
+  }
+  lastMessageId = data.key;
+  appendMessage(data.key, data.val());
 });
 
 onValue(typingRef, (snapshot) => {

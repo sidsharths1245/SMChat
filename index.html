@@ -11,19 +11,16 @@
       padding: 0;
       overflow: hidden;
     }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #e5ddd5;
       display: flex;
       flex-direction: column;
     }
-
     body.dark {
       background: #1e1e1e;
       color: #eee;
     }
-
     #typing {
       font-size: 12px;
       color: #555;
@@ -31,7 +28,6 @@
       margin-top: 4px;
       height: 14px;
     }
-
     #messages {
       flex: 1;
       overflow-y: auto;
@@ -40,19 +36,15 @@
       flex-direction: column;
       gap: 10px;
     }
-
     .msg-row {
       display: flex;
     }
-
     .left {
       justify-content: flex-start;
     }
-
     .right {
       justify-content: flex-end;
     }
-
     .msg {
       padding: 10px 15px;
       border-radius: 18px;
@@ -62,26 +54,22 @@
       position: relative;
       line-height: 1.4;
     }
-
     .blue {
       background-color: #0084ff;
       color: #fff;
       border-top-right-radius: 0;
     }
-
     .white {
       background-color: #ffffff;
       color: #111;
       border-top-left-radius: 0;
     }
-
     .timestamp {
       font-size: 10px;
       color: #bbb;
       margin-top: 4px;
       text-align: right;
     }
-
     #input-area {
       display: flex;
       padding: 10px;
@@ -90,12 +78,10 @@
       background-color: white;
       align-items: center;
     }
-
     body.dark #input-area {
       background-color: #333;
       border-top: 1px solid #555;
     }
-
     select, #message {
       font-size: 14px;
       padding: 10px;
@@ -103,18 +89,15 @@
       border: 1px solid #ccc;
       outline: none;
     }
-
     body.dark select,
     body.dark #message {
       background: #222;
       color: #fff;
       border: 1px solid #555;
     }
-
     #message {
       flex: 1;
     }
-
     button {
       background: #0084ff;
       border: none;
@@ -124,25 +107,20 @@
       border-radius: 50%;
       cursor: pointer;
     }
-
     button:hover {
       background: #006fdd;
     }
-
     @media (max-width: 600px) {
       #messages {
         padding: 8px;
       }
-
       .msg {
         font-size: 14px;
         padding: 8px 12px;
       }
-
       #message {
         font-size: 14px;
       }
-
       button {
         padding: 10px;
       }
@@ -152,7 +130,6 @@
 <body>
   <div id="typing"></div>
   <div id="messages"></div>
-
   <div id="input-area">
     <select id="username">
       <option value="Shiv">Shiv</option>
@@ -161,14 +138,13 @@
     <input id="message" placeholder="Type a message" />
     <button onclick="sendMessage()">➤</button>
   </div>
-
   <audio id="notify-sound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_846a730e18.mp3" preload="auto"></audio>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
     import {
       getDatabase, ref, push, onChildAdded,
-      onValue, set, remove
+      onValue, set, remove, update
     } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 
     const firebaseConfig = {
@@ -185,33 +161,37 @@
     const db = getDatabase(app);
     const messagesRef = ref(db, "messages");
     const typingRef = ref(db, "typing");
-
-    // Apply saved theme on load
-    if (localStorage.getItem("theme") === "dark") {
-      document.body.classList.add("dark");
-    }
+    const readRef = ref(db, "readReceipts");
 
     let lastMessageId = null;
     const usernameSelect = document.getElementById("username");
 
-    document.getElementById("message").addEventListener("keydown", e => {
+    // Theme
+    if (localStorage.getItem("theme") === "dark") {
+      document.body.classList.add("dark");
+    }
+
+    // Typing
+    const messageInput = document.getElementById("message");
+    messageInput.addEventListener("keydown", e => {
       if (e.key === "Enter") sendMessage();
       set(typingRef, usernameSelect.value + " is typing...");
     });
-
-    document.getElementById("message").addEventListener("keyup", e => {
+    messageInput.addEventListener("keyup", e => {
       if (e.key !== "Enter") {
         setTimeout(() => set(typingRef, ""), 1000);
       }
     });
 
+    // Send Message
     function sendMessage() {
       const name = usernameSelect.value;
-      const text = document.getElementById("message").value.trim();
+      const text = messageInput.value.trim();
       if (!text) return;
 
       if (text === "#clear") {
         remove(messagesRef);
+        remove(readRef);
         return;
       }
 
@@ -232,20 +212,43 @@
 
       push(messagesRef, { name, text, time });
       set(typingRef, "");
-      document.getElementById("message").value = "";
+      messageInput.value = "";
+    }
+
+    function updateReadReceipt(msgId) {
+      const user = usernameSelect.value;
+      if (document.visibilityState === "visible") {
+        update(readRef, { [user]: msgId });
+      }
+    }
+
+    function renderSeenIndicator(msgId) {
+      onValue(readRef, (snapshot) => {
+        const reads = snapshot.val() || {};
+        const user = usernameSelect.value;
+        const otherUser = user === "Shiv" ? "Monika" : "Shiv";
+
+        if (reads[otherUser] === msgId) {
+          const lastBubble = document.querySelector('.msg-row.right:last-child .timestamp');
+          if (lastBubble && !lastBubble.textContent.includes("✓")) {
+            lastBubble.textContent += " ✓ Seen";
+          }
+        }
+      });
     }
 
     onChildAdded(messagesRef, (data) => {
       const msg = data.val();
       const currentUser = usernameSelect.value;
+      const isCurrentUser = msg.name === currentUser;
 
-      if (lastMessageId !== data.key && msg.name !== currentUser) {
+      if (lastMessageId !== data.key && !isCurrentUser) {
         document.getElementById("notify-sound").play();
       }
+
       lastMessageId = data.key;
 
       const msgRow = document.createElement("div");
-      const isCurrentUser = msg.name === currentUser;
       msgRow.className = "msg-row " + (isCurrentUser ? "right" : "left");
 
       const bubble = document.createElement("div");
@@ -259,15 +262,20 @@
       const messages = document.getElementById("messages");
       messages.appendChild(msgRow);
       messages.scrollTop = messages.scrollHeight;
+
+      if (!isCurrentUser) {
+        updateReadReceipt(data.key);
+      } else {
+        renderSeenIndicator(data.key);
+      }
     });
 
     onValue(typingRef, (snapshot) => {
       document.getElementById("typing").textContent = snapshot.val() || "";
     });
 
-    // PIN protection
+    // PIN-protected user switch
     let previousUser = "Monika";
-
     usernameSelect.addEventListener("change", () => {
       const selected = usernameSelect.value;
       if (selected === "Shiv") {
@@ -285,9 +293,10 @@
       }
     });
 
+    // Reload messages
     function reloadMessages() {
       const messages = document.getElementById("messages");
-      messages.innerHTML = ""; // clear
+      messages.innerHTML = "";
       onValue(messagesRef, (snapshot) => {
         messages.innerHTML = "";
         snapshot.forEach(child => {
@@ -307,10 +316,23 @@
 
           msgRow.appendChild(bubble);
           messages.appendChild(msgRow);
+
+          if (!isCurrentUser) {
+            updateReadReceipt(child.key);
+          } else {
+            renderSeenIndicator(child.key);
+          }
         });
         messages.scrollTop = messages.scrollHeight;
       }, { onlyOnce: true });
     }
+
+    // Recheck read receipts when tab becomes visible
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        reloadMessages();
+      }
+    });
 
     window.sendMessage = sendMessage;
   </script>

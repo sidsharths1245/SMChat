@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -21,6 +21,20 @@
       background: #1e1e1e;
       color: #eee;
     }
+
+    #chat-header {
+      padding: 12px;
+      background: #0084ff;
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+      text-align: center;
+    }
+    body.dark #chat-header {
+      background: #222;
+      color: #eee;
+    }
+
     #typing {
       font-size: 12px;
       color: #555;
@@ -28,6 +42,7 @@
       margin-top: 4px;
       height: 14px;
     }
+
     #messages {
       flex: 1;
       overflow-y: auto;
@@ -36,6 +51,7 @@
       flex-direction: column;
       gap: 10px;
     }
+
     .msg-row {
       display: flex;
     }
@@ -45,6 +61,7 @@
     .right {
       justify-content: flex-end;
     }
+
     .msg {
       padding: 10px 15px;
       border-radius: 18px;
@@ -54,6 +71,7 @@
       position: relative;
       line-height: 1.4;
     }
+
     .blue {
       background-color: #0084ff;
       color: #fff;
@@ -64,12 +82,14 @@
       color: #111;
       border-top-left-radius: 0;
     }
+
     .timestamp {
       font-size: 10px;
       color: #bbb;
       margin-top: 4px;
       text-align: right;
     }
+
     #input-area {
       display: flex;
       padding: 10px;
@@ -82,6 +102,7 @@
       background-color: #333;
       border-top: 1px solid #555;
     }
+
     #message {
       flex: 1;
       font-size: 14px;
@@ -95,6 +116,7 @@
       color: #fff;
       border: 1px solid #555;
     }
+
     button {
       background: #0084ff;
       border: none;
@@ -107,6 +129,7 @@
     button:hover {
       background: #006fdd;
     }
+
     @media (max-width: 600px) {
       #messages {
         padding: 8px;
@@ -125,6 +148,7 @@
   </style>
 </head>
 <body>
+  <div id="chat-header"><span id="chat-with"></span></div>
   <div id="typing"></div>
   <div id="messages"></div>
   <div id="input-area">
@@ -159,9 +183,15 @@
     let currentUser = "Monika";
     let lastMessageId = null;
 
+    function updateHeader() {
+      const chatWith = currentUser === "Monika" ? "Chatting with Shiv 💬" : "Chatting with Monika 💬";
+      document.getElementById("chat-with").textContent = chatWith;
+    }
+
     if (localStorage.getItem("theme") === "dark") {
       document.body.classList.add("dark");
     }
+    updateHeader();
 
     const messageInput = document.getElementById("message");
     messageInput.addEventListener("keydown", e => {
@@ -178,7 +208,6 @@
       const text = messageInput.value.trim();
       if (!text) return;
 
-      // Special commands
       if (text === "#clear") {
         remove(messagesRef);
         remove(readRef);
@@ -204,6 +233,7 @@
         const pin = prompt("Enter PIN to switch to Shiv:");
         if (pin === "8483") {
           currentUser = "Shiv";
+          updateHeader();
           reloadMessages();
         } else {
           alert("Incorrect PIN.");
@@ -214,6 +244,7 @@
 
       if (text === "#switchmonika") {
         currentUser = "Monika";
+        updateHeader();
         reloadMessages();
         messageInput.value = "";
         return;

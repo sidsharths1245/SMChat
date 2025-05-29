@@ -17,12 +17,11 @@
       background: #e5ddd5;
       display: flex;
       flex-direction: column;
-      transition: background 0.3s, color 0.3s;
     }
 
     body.dark {
-      background: #121212;
-      color: #fff;
+      background: #1e1e1e;
+      color: #eee;
     }
 
     #typing {
@@ -31,10 +30,6 @@
       text-align: center;
       margin-top: 4px;
       height: 14px;
-    }
-
-    body.dark #typing {
-      color: #aaa;
     }
 
     #messages {
@@ -80,11 +75,6 @@
       border-top-left-radius: 0;
     }
 
-    body.dark .white {
-      background-color: #333;
-      color: #eee;
-    }
-
     .timestamp {
       font-size: 10px;
       color: #bbb;
@@ -95,58 +85,48 @@
     #input-area {
       display: flex;
       padding: 10px;
-      gap: 8px;
+      gap: 6px;
       border-top: 1px solid #ccc;
       background-color: white;
       align-items: center;
     }
 
     body.dark #input-area {
-      background-color: #1e1e1e;
-      border-color: #444;
+      background-color: #333;
+      border-top: 1px solid #555;
     }
 
-    select {
-      min-width: 90px;
+    select, #message {
       font-size: 14px;
-      padding: 8px 10px;
+      padding: 10px;
       border-radius: 20px;
       border: 1px solid #ccc;
       outline: none;
-    }
-
-    #message {
-      flex: 1;
-      font-size: 14px;
-      padding: 10px 14px;
-      border-radius: 20px;
-      border: 1px solid #ccc;
-      outline: none;
-    }
-
-    button {
-      min-width: 44px;
-      min-height: 44px;
-      background: #0084ff;
-      border: none;
-      color: white;
-      font-size: 16px;
-      border-radius: 50%;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    button:hover {
-      background: #006fdd;
     }
 
     body.dark select,
     body.dark #message {
-      background-color: #2a2a2a;
+      background: #222;
+      color: #fff;
+      border: 1px solid #555;
+    }
+
+    #message {
+      flex: 1;
+    }
+
+    button {
+      background: #0084ff;
+      border: none;
       color: white;
-      border-color: #555;
+      padding: 10px 16px;
+      font-size: 16px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #006fdd;
     }
 
     @media (max-width: 600px) {
@@ -206,12 +186,17 @@
     const messagesRef = ref(db, "messages");
     const typingRef = ref(db, "typing");
 
-    let allMessages = [];
-    let currentUser = document.getElementById("username").value;
+    // Apply saved theme on load
+    if (localStorage.getItem("theme") === "dark") {
+      document.body.classList.add("dark");
+    }
+
+    let lastMessageId = null;
+    const usernameSelect = document.getElementById("username");
 
     document.getElementById("message").addEventListener("keydown", e => {
       if (e.key === "Enter") sendMessage();
-      set(typingRef, currentUser + " is typing...");
+      set(typingRef, usernameSelect.value + " is typing...");
     });
 
     document.getElementById("message").addEventListener("keyup", e => {
@@ -220,40 +205,25 @@
       }
     });
 
-    document.getElementById("username").addEventListener("change", () => {
-      const selected = document.getElementById("username").value;
-      if (selected === "Shiv") {
-        const pin = prompt("Enter PIN to switch to Shiv:");
-        if (pin !== "8483") {
-          alert("Incorrect PIN. Staying as Monika.");
-          document.getElementById("username").value = "Monika";
-          return;
-        }
-      }
-      currentUser = selected;
-      renderMessages();
-    });
-
     function sendMessage() {
-      const name = currentUser;
+      const name = usernameSelect.value;
       const text = document.getElementById("message").value.trim();
       if (!text) return;
 
-      // Special commands
-      if (text === "#clear" && name === "Shiv") {
+      if (text === "#clear") {
         remove(messagesRef);
-        allMessages = [];
-        document.getElementById("messages").innerHTML = "";
         return;
       }
 
       if (text === "#dark") {
         document.body.classList.add("dark");
+        localStorage.setItem("theme", "dark");
         return;
       }
 
       if (text === "#light") {
         document.body.classList.remove("dark");
+        localStorage.setItem("theme", "light");
         return;
       }
 
@@ -265,54 +235,82 @@
       document.getElementById("message").value = "";
     }
 
-    function renderMessages() {
-      const container = document.getElementById("messages");
-      container.innerHTML = "";
-      allMessages.forEach(msg => {
-        const isCurrent = msg.name === currentUser;
-        const row = document.createElement("div");
-        row.className = "msg-row " + (isCurrent ? "right" : "left");
-
-        const bubble = document.createElement("div");
-        bubble.className = "msg " + (isCurrent ? "blue" : "white");
-        bubble.innerHTML = `
-          <div>${msg.text}</div>
-          <div class="timestamp">${msg.time || ''}</div>
-        `;
-        row.appendChild(bubble);
-        container.appendChild(row);
-      });
-      container.scrollTop = container.scrollHeight;
-    }
-
     onChildAdded(messagesRef, (data) => {
       const msg = data.val();
-      allMessages.push(msg);
+      const currentUser = usernameSelect.value;
 
-      const isCurrent = msg.name === currentUser;
-      const row = document.createElement("div");
-      row.className = "msg-row " + (isCurrent ? "right" : "left");
+      if (lastMessageId !== data.key && msg.name !== currentUser) {
+        document.getElementById("notify-sound").play();
+      }
+      lastMessageId = data.key;
+
+      const msgRow = document.createElement("div");
+      const isCurrentUser = msg.name === currentUser;
+      msgRow.className = "msg-row " + (isCurrentUser ? "right" : "left");
 
       const bubble = document.createElement("div");
-      bubble.className = "msg " + (isCurrent ? "blue" : "white");
+      bubble.className = "msg " + (isCurrentUser ? "blue" : "white");
       bubble.innerHTML = `
         <div>${msg.text}</div>
         <div class="timestamp">${msg.time || ''}</div>
       `;
 
-      row.appendChild(bubble);
+      msgRow.appendChild(bubble);
       const messages = document.getElementById("messages");
-      messages.appendChild(row);
+      messages.appendChild(msgRow);
       messages.scrollTop = messages.scrollHeight;
-
-      if (msg.name !== currentUser) {
-        document.getElementById("notify-sound").play();
-      }
     });
 
     onValue(typingRef, (snapshot) => {
       document.getElementById("typing").textContent = snapshot.val() || "";
     });
+
+    // PIN protection
+    let previousUser = "Monika";
+
+    usernameSelect.addEventListener("change", () => {
+      const selected = usernameSelect.value;
+      if (selected === "Shiv") {
+        const pin = prompt("Enter PIN to switch to Shiv:");
+        if (pin !== "8483") {
+          alert("Incorrect PIN. Staying as Monika.");
+          usernameSelect.value = "Monika";
+        } else {
+          previousUser = "Shiv";
+          reloadMessages();
+        }
+      } else {
+        previousUser = "Monika";
+        reloadMessages();
+      }
+    });
+
+    function reloadMessages() {
+      const messages = document.getElementById("messages");
+      messages.innerHTML = ""; // clear
+      onValue(messagesRef, (snapshot) => {
+        messages.innerHTML = "";
+        snapshot.forEach(child => {
+          const msg = child.val();
+          const currentUser = usernameSelect.value;
+          const isCurrentUser = msg.name === currentUser;
+
+          const msgRow = document.createElement("div");
+          msgRow.className = "msg-row " + (isCurrentUser ? "right" : "left");
+
+          const bubble = document.createElement("div");
+          bubble.className = "msg " + (isCurrentUser ? "blue" : "white");
+          bubble.innerHTML = `
+            <div>${msg.text}</div>
+            <div class="timestamp">${msg.time || ''}</div>
+          `;
+
+          msgRow.appendChild(bubble);
+          messages.appendChild(msgRow);
+        });
+        messages.scrollTop = messages.scrollHeight;
+      }, { onlyOnce: true });
+    }
 
     window.sendMessage = sendMessage;
   </script>

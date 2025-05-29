@@ -14,9 +14,17 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #e5ddd5;
       display: flex;
       flex-direction: column;
+    }
+
+    body.light {
+      background: #e5ddd5;
+    }
+
+    body.dark {
+      background: #121212;
+      color: #eee;
     }
 
     #typing {
@@ -34,7 +42,6 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
-      background-color: #e5ddd5;
     }
 
     .msg-row {
@@ -71,6 +78,16 @@
       border-top-right-radius: 0;
     }
 
+    body.dark .incoming {
+      background-color: #2a2a2a;
+      color: #eee;
+    }
+
+    body.dark .outgoing {
+      background-color: #006aff;
+      color: #fff;
+    }
+
     .timestamp {
       font-size: 10px;
       color: #bbb;
@@ -87,20 +104,23 @@
       align-items: center;
     }
 
-    select {
-      font-size: 14px;
-      padding: 6px;
-      border-radius: 20px;
-      border: 1px solid #ccc;
+    body.dark #input-area {
+      background-color: #1e1e1e;
+      border-color: #444;
     }
 
-    #message {
-      flex: 1;
+    select, #message {
+      font-size: 14px;
       padding: 10px;
-      font-size: 16px;
       border-radius: 20px;
       border: 1px solid #ccc;
       outline: none;
+    }
+
+    body.dark select, body.dark #message {
+      background-color: #2a2a2a;
+      color: white;
+      border-color: #555;
     }
 
     button {
@@ -137,7 +157,7 @@
     }
   </style>
 </head>
-<body>
+<body class="light">
   <div id="typing"></div>
   <div id="messages"></div>
 
@@ -155,7 +175,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
     import {
-      getDatabase, ref, push, onValue, set
+      getDatabase, ref, push, onValue, set, remove
     } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 
     const firebaseConfig = {
@@ -175,35 +195,11 @@
 
     let allMessages = {};
     let lastMessageId = null;
-    let previousUser = "Monika"; // initial user
 
     const usernameSelect = document.getElementById("username");
     const messageInput = document.getElementById("message");
     const messagesDiv = document.getElementById("messages");
-
-    messageInput.addEventListener("keydown", e => {
-      if (e.key === "Enter") sendMessage();
-      set(typingRef, usernameSelect.value + " is typing...");
-    });
-
-    messageInput.addEventListener("keyup", e => {
-      if (e.key !== "Enter") {
-        setTimeout(() => set(typingRef, ""), 1000);
-      }
-    });
-
-    function sendMessage() {
-      const name = usernameSelect.value;
-      const text = messageInput.value.trim();
-      if (!text) return;
-
-      const now = new Date();
-      const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-      push(messagesRef, { name, text, time });
-      set(typingRef, "");
-      messageInput.value = "";
-    }
+    const body = document.body;
 
     function renderMessages() {
       messagesDiv.innerHTML = "";
@@ -230,6 +226,51 @@
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
+    function sendMessage() {
+      const name = usernameSelect.value;
+      const text = messageInput.value.trim();
+      if (!text) return;
+
+      // Check for commands
+      if (text === "#clear" && name === "Shiv") {
+        remove(messagesRef);
+        messageInput.value = "";
+        return;
+      }
+
+      if (text === "#dark") {
+        body.classList.remove("light");
+        body.classList.add("dark");
+        messageInput.value = "";
+        return;
+      }
+
+      if (text === "#light") {
+        body.classList.remove("dark");
+        body.classList.add("light");
+        messageInput.value = "";
+        return;
+      }
+
+      const now = new Date();
+      const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      push(messagesRef, { name, text, time });
+      set(typingRef, "");
+      messageInput.value = "";
+    }
+
+    messageInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") sendMessage();
+      set(typingRef, usernameSelect.value + " is typing...");
+    });
+
+    messageInput.addEventListener("keyup", e => {
+      if (e.key !== "Enter") {
+        setTimeout(() => set(typingRef, ""), 1000);
+      }
+    });
+
     onValue(messagesRef, snapshot => {
       allMessages = snapshot.val() || {};
       renderMessages();
@@ -248,11 +289,9 @@
           alert("Incorrect PIN. Staying as Monika.");
           usernameSelect.value = "Monika";
         } else {
-          previousUser = "Shiv";
           renderMessages();
         }
       } else {
-        previousUser = "Monika";
         renderMessages();
       }
     });

@@ -215,6 +215,35 @@
 <audio id="notify-sound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_846a730e18.mp3" preload="auto"></audio>
 
 <script type="module">
+// --- PIN Prompt Logic ---
+const validPin = "8483"; // You can change this to any PIN
+const PIN_KEY = "chatPinValidatedAt";
+const now = new Date();
+const oneMonth = 30 * 24 * 60 * 60 * 1000;
+
+const lastValidated = localStorage.getItem(PIN_KEY);
+if (!lastValidated || now - new Date(lastValidated) > oneMonth) {
+  let tries = 3;
+  let userPin = "";
+  while (userPin !== validPin && tries > 0) {
+    userPin = prompt("Enter PIN to access the chat:");
+    if (userPin === null) {
+      document.body.innerHTML = "<h2 style='text-align:center;margin-top:20%;'>Access denied.</h2>";
+      throw new Error("Access denied");
+    }
+    if (userPin === validPin) {
+      localStorage.setItem(PIN_KEY, now.toISOString());
+    } else {
+      tries--;
+      alert(`Incorrect PIN. ${tries} ${tries === 1 ? "try" : "tries"} left.`);
+    }
+  }
+  if (userPin !== validPin) {
+    document.body.innerHTML = "<h2 style='text-align:center;margin-top:20%;'>Access denied.</h2>";
+    throw new Error("Access denied");
+  }
+}
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
 import {
   getDatabase, ref, push, onChildAdded, onValue, set, remove, update

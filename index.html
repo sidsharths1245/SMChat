@@ -5,76 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Shiv & Monika Chat</title>
   <style>
-    * box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-
-  html, body {
-    height: 100%;
-    font-family: 'Segoe UI', Roboto, sans-serif;
-    background: #f5f5f5;
-    color: #111;
-    transition: background 0.3s, color 0.3s;
-  }
-
-  body.dark {
-    background: #121212;
-    color: #eee;
-  }
-
-  #login-screen {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
-    padding: 20px;
-    gap: 18px;
-  }
-
-  #login-screen input {
-    padding: 12px 16px;
-    font-size: 16px;
-    width: 240px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    outline: none;
-    transition: box-shadow 0.3s, border-color 0.3s;
-  }
-
-  #login-screen input:focus {
-    border-color: #fffc00;
-    box-shadow: 0 0 5px rgba(255, 252, 0, 0.5);
-  }
-
-  #login-screen button {
-    padding: 12px;
-    width: 140px;
-    background: #fffc00;
-    border: none;
-    font-weight: bold;
-    font-size: 16px;
-    cursor: pointer;
-    border-radius: 10px;
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
-    transition: background 0.3s, transform 0.2s;
-  }
-
-  #login-screen button:hover {
-    background: #fbe300;
-    transform: scale(1.03);
-  }
-
-  #login-screen button:active {
-    transform: scale(0.97);
-  }
-
-  #chat-container {
-    display: none;
-  }
-    /* rest of your existing styles below */
-    {
+    * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
@@ -266,18 +197,9 @@
       padding-left: 8px;
       margin-bottom: 6px;
     }
-    /* ... Keep all existing styles unchanged ... */
   </style>
 </head>
 <body>
-<div id="login-screen">
-  <h2>Login</h2>
-  <input id="username" placeholder="Username" />
-  <input id="password" type="password" placeholder="PIN" />
-  <button onclick="login()">Login</button>
-  <div id="login-error" style="color:red;"></div>
-</div>
-
 <div id="chat-container">
   <div id="chat-header"><span id="chat-with"></span></div>
   <div id="typing"></div>
@@ -314,7 +236,7 @@ const messagesRef = ref(db, "messages");
 const typingRef = ref(db, "typing");
 const readRef = ref(db, "readReceipts");
 
-let currentUser = null;
+let currentUser = "Monika";
 let lastMessageId = null;
 let replyTo = null;
 
@@ -322,50 +244,17 @@ function updateHeader() {
   document.getElementById("chat-with").textContent =
     currentUser === "Monika" ? "Chatting with Shiv" : "Chatting with Monika";
 }
-
-function login() {
-  const username = document.getElementById("username").value.trim();
-  const password = document.getElementById("password").value.trim();
-  const err = document.getElementById("login-error");
-
-  if ((username === "Shiv" && password === "1234") || (username === "Monika" && password === "5678")) {
-    currentUser = username;
-    localStorage.setItem("chatUser", currentUser);
-    localStorage.setItem("chatUserLoginTime", Date.now());
-    document.getElementById("login-screen").style.display = "none";
-    document.getElementById("chat-container").style.display = "flex";
-    updateHeader();
-    reloadMessages();
-  } else {
-    err.textContent = "Incorrect username or PIN";
-  }
-}
-
-function autoLogin() {
-  const user = localStorage.getItem("chatUser");
-  const time = parseInt(localStorage.getItem("chatUserLoginTime") || 0);
-  if (user && Date.now() - time < 30 * 24 * 60 * 60 * 1000) {
-
-    currentUser = user;
-    document.getElementById("login-screen").style.display = "none";
-    document.getElementById("chat-container").style.display = "flex";
-    updateHeader();
-    reloadMessages();
-  }
-}
-
 if (localStorage.getItem("theme") === "dark") {
   document.body.classList.add("dark");
 }
-
-autoLogin();
+updateHeader();
 
 const messageInput = document.getElementById("message");
-messageInput?.addEventListener("keydown", (e) => {
+messageInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") sendMessage();
   set(typingRef, currentUser + " is typing...");
 });
-messageInput?.addEventListener("keyup", (e) => {
+messageInput.addEventListener("keyup", (e) => {
   if (e.key !== "Enter") setTimeout(() => set(typingRef, ""), 1000);
 });
 
@@ -388,6 +277,23 @@ function sendMessage() {
   if (text === "#light") {
     document.body.classList.remove("dark");
     localStorage.setItem("theme", "light");
+    messageInput.value = "";
+    return;
+  }
+  if (text === "#switchshiv") {
+    const pin = prompt("Enter PIN to switch to Shiv:");
+    if (pin === "8483") {
+      currentUser = "Shiv";
+      updateHeader();
+      reloadMessages();
+    } else alert("Incorrect PIN.");
+    messageInput.value = "";
+    return;
+  }
+  if (text === "#switchmonika") {
+    currentUser = "Monika";
+    updateHeader();
+    reloadMessages();
     messageInput.value = "";
     return;
   }
@@ -540,7 +446,6 @@ document.addEventListener("visibilitychange", () => {
 });
 
 window.sendMessage = sendMessage;
-window.login = login;
 </script>
 </body>
 </html>

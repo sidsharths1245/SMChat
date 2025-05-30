@@ -215,6 +215,10 @@
 <audio id="notify-sound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_846a730e18.mp3" preload="auto"></audio>
 
 <script type="module">
+if (Notification.permission !== "granted") {
+  Notification.requestPermission();
+}
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
 import {
   getDatabase, ref, push, onChildAdded, onValue, set, remove, update
@@ -430,12 +434,24 @@ function appendMessage(id, msg) {
 }
 
 onChildAdded(messagesRef, (data) => {
-  if (lastMessageId !== data.key && data.val().name !== currentUser) {
+  const msg = data.val();
+  const isFromOtherUser = msg.name !== currentUser;
+
+  if (lastMessageId !== data.key && isFromOtherUser) {
     document.getElementById("notify-sound").play();
+
+    if (document.visibilityState !== "visible" && Notification.permission === "granted") {
+      new Notification(`New message from ${msg.name}`, {
+        body: msg.text,
+        icon: "https://cdn-icons-png.flaticon.com/512/1077/1077012.png" // optional avatar/icon
+      });
+    }
   }
+
   lastMessageId = data.key;
-  appendMessage(data.key, data.val());
+  appendMessage(data.key, msg);
 });
+
 
 onValue(typingRef, (snapshot) => {
   document.getElementById("typing").textContent = snapshot.val() || "";

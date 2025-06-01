@@ -150,7 +150,7 @@
     body.dark #menu button:hover {
       background: #333;
     }
-    #message-menu {
+    #message-menu, #reaction-menu {
       position: absolute;
       background: #fff;
       border-radius: 8px;
@@ -158,10 +158,10 @@
       display: none;
       z-index: 4;
     }
-    body.dark #message-menu {
+    body.dark #message-menu, body.dark #reaction-menu {
       background: #2a2a2a;
     }
-    #message-menu button {
+    #message-menu button, #reaction-menu button {
       display: block;
       width: 100%;
       padding: 10px 20px;
@@ -172,13 +172,13 @@
       cursor: pointer;
       color: #111;
     }
-    body.dark #message-menu button {
+    body.dark #message-menu button, body.dark #reaction-menu button {
       color: #eee;
     }
-    #message-menu button:hover {
+    #message-menu button:hover, #reaction-menu button:hover {
       background: #f0f0f0;
     }
-    body.dark #message-menu button:hover {
+    body.dark #message-menu button:hover, body.dark #reaction-menu button:hover {
       background: #333;
     }
     #typing {
@@ -205,7 +205,7 @@
       padding: 10px 0;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 14px;
     }
     .msg-row {
       display: flex;
@@ -293,32 +293,34 @@
       transform: scale(1.2);
     }
     .reactions {
-      font-size: 12px;
-      margin-top: 4px;
-      color: #333;
+      position: absolute;
+      bottom: -12px;
+      font-size: 14px;
       display: flex;
-      gap: 5px;
+      gap: 2px;
       flex-wrap: wrap;
-    }
-    .left .reactions span {
-      background: #e8f0fe;
-      border: 1px solid #d0d7e5;
+      padding: 2px 6px;
       border-radius: 10px;
-      padding: 3px 8px;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      cursor: pointer;
+      transition: background 0.2s;
     }
-    .right .reactions span {
-      background: rgba(255, 255, 255, 0.9);
-      border: 1px solid #b0c4a0;
-      border-radius: 10px;
-      padding: 3px 8px;
+    .left .reactions {
+      left: 10px;
+    }
+    .right .reactions {
+      right: 10px;
     }
     body.dark .reactions {
-      color: #eee;
+      background: #2a2a2a;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
     }
-    body.dark .reactions span {
+    body.dark .reactions:hover {
       background: #333;
-      border: 1px solid #555;
-      color: #eee;
+    }
+    .reactions span {
+      line-height: 1;
     }
     #input-area {
       position: sticky;
@@ -399,28 +401,27 @@
       align-items: center;
       gap: 10px;
     }
-   #message {
-  flex: 1;
-  padding: 10px 14px;
-  font-size: 15px;
-  border-radius: 18px;
-  border: 1px solid #ccc;
-  outline: none;
-  background: #fff;
-  transition: 0.3s;
-  resize: none;
-  min-height: 22px; /* Changed from height to min-height */
-  line-height: 1.4;
-  font-family: 'Segoe UI', Roboto, sans-serif;
-  overflow: hidden; /* Prevent scrollbar */
-}
-
-@media (max-width: 600px) {
-  #message {
-    min-height: 20px; /* Changed from height to min-height */
-    overflow: hidden; /* Ensure no scrollbar on mobile */
-  }
-}
+    #message {
+      flex: 1;
+      padding: 10px 14px;
+      font-size: 15px;
+      border-radius: 18px;
+      border: 1px solid #ccc;
+      outline: none;
+      background: #fff;
+      transition: 0.3s;
+      resize: none;
+      min-height: 22px;
+      line-height: 1.4;
+      font-family: 'Segoe UI', Roboto, sans-serif;
+      overflow: hidden;
+    }
+    @media (max-width: 600px) {
+      #message {
+        min-height: 20px;
+        overflow: hidden;
+      }
+    }
     body.dark #message {
       background: #222;
       border: 1px solid #555;
@@ -476,11 +477,13 @@
         font-size: 16px;
         margin: 0 3px;
       }
-      .reactions span {
-        padding: 2px 6px;
+      .reactions {
+        bottom: -10px;
+        padding: 2px 4px;
+        font-size: 12px;
       }
       #message {
-        height: 40px;
+        min-height: 40px;
       }
       #login-logo {
         width: 80px;
@@ -650,11 +653,15 @@
       const menu = document.getElementById("menu");
       const menuButton = document.getElementById("menu-button");
       const messageMenu = document.getElementById("message-menu");
+      const reactionMenu = document.getElementById("reaction-menu");
       if (!menu.contains(e.target) && !menuButton.contains(e.target)) {
         menu.style.display = "none";
       }
       if (messageMenu && !messageMenu.contains(e.target)) {
         messageMenu.style.display = "none";
+      }
+      if (reactionMenu && !reactionMenu.contains(e.target)) {
+        reactionMenu.style.display = "none";
       }
     });
 
@@ -839,13 +846,6 @@
       const reactionRef = ref(db, `messages/${msgId}/reactions/${currentUser}`);
       set(reactionRef, emoji).then(() => {
         console.log("Reaction added successfully");
-        const bubble = document.querySelector(`.msg-row[data-id="${msgId}"] .msg`);
-        if (bubble) {
-          onValue(ref(db, `messages/${msgId}/reactions`), (snapshot) => {
-            const reactions = snapshot.val() || {};
-            renderReactions(bubble, msgId, reactions);
-          }, { onlyOnce: true });
-        }
       }).catch((error) => {
         console.error("Error adding reaction:", error);
         alert("Failed to add reaction. Please check your permissions or try again.");
@@ -862,15 +862,57 @@
       reactionDiv.innerHTML = '';
 
       if (reactions && Object.keys(reactions).length > 0) {
-        for (const [user, emoji] of Object.entries(reactions)) {
+        const emojiCounts = {};
+        for (const emoji of Object.values(reactions)) {
+          emojiCounts[emoji] = (emojiCounts[emoji] || 0) + 1;
+        }
+        for (const [emoji, count] of Object.entries(emojiCounts)) {
           const reactionSpan = document.createElement('span');
-          reactionSpan.textContent = `${emoji} ${user}`;
+          reactionSpan.textContent = count > 1 ? `${emoji}${count}` : emoji;
+          reactionSpan.setAttribute('data-emoji', emoji);
+          reactionSpan.onclick = (e) => {
+            e.stopPropagation();
+            showReactionMenu(e, msgId, emoji, reactions);
+          };
           reactionDiv.appendChild(reactionSpan);
         }
         reactionDiv.style.display = 'flex';
       } else {
         reactionDiv.style.display = 'none';
       }
+    }
+
+    function showReactionMenu(e, msgId, selectedEmoji, reactions) {
+      let reactionMenu = document.getElementById("reaction-menu");
+      if (!reactionMenu) {
+        reactionMenu = document.createElement("div");
+        reactionMenu.id = "reaction-menu";
+        document.body.appendChild(reactionMenu);
+      }
+      reactionMenu.innerHTML = '';
+
+      const users = Object.entries(reactions).filter(([_, emoji]) => emoji === selectedEmoji).map(([user]) => user);
+      if (users.length > 0) {
+        const usersButton = document.createElement("button");
+        usersButton.textContent = `Reacted by: ${users.join(', ')}`;
+        usersButton.style.cursor = 'default';
+        reactionMenu.appendChild(usersButton);
+      }
+
+      emojis.forEach(emoji => {
+        const emojiButton = document.createElement("button");
+        emojiButton.textContent = emoji;
+        emojiButton.onclick = () => {
+          addReaction(msgId, emoji);
+          reactionMenu.style.display = "none";
+        };
+        reactionMenu.appendChild(emojiButton);
+      });
+
+      const rect = e.target.getBoundingClientRect();
+      reactionMenu.style.top = `${rect.bottom + window.scrollY}px`;
+      reactionMenu.style.left = `${rect.left + window.scrollX}px`;
+      reactionMenu.style.display = "block";
     }
 
     function showMessageMenu(e, msgId, msgText, isCurrentUser, reactionBar) {

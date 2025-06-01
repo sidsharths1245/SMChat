@@ -4,25 +4,8 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Shiv & Monika Chat</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <style>
-  #login-logo {
-  width: 80px; /* Adjust size as needed */
-  height: auto;
-  margin-bottom: 20px;
-  display: block;
-  transition: filter 0.3s;
-}
-
-body.dark #login-logo {
-  filter: brightness(1.2); /* Slightly brighten logo in dark mode for visibility */
-}
-
-@media (max-width: 600px) {
-  #login-logo {
-    width: 80px; /* Smaller size for mobile screens */
-    margin-bottom: 15px;
-  }
-}
     * {
       box-sizing: border-box;
       margin: 0;
@@ -70,18 +53,36 @@ body.dark #login-logo {
       border: 1px solid #555;
       color: #eee;
     }
+    #login-logo {
+      width: 80px;
+      height: auto;
+      margin-bottom: 20px;
+      display: block;
+      transition: filter 0.3s;
+    }
+    body.dark #login-logo {
+      filter: brightness(1.2);
+    }
     #login-container button {
       width: 100%;
       padding: 12px;
-      background: #fffc00;
+      background: #0DB561;
       border: none;
       border-radius: 8px;
       font-size: 16px;
       cursor: pointer;
       transition: background 0.3s;
+      color: #fff;
     }
     #login-container button:hover {
-      background: #e6e000;
+      background: #0C9F54;
+    }
+    body.dark #login-container button {
+      background: #0DB561;
+      color: #fff;
+    }
+    body.dark #login-container button:hover {
+      background: #0C9F54;
     }
     #login-error {
       color: #d32f2f;
@@ -418,26 +419,29 @@ body.dark #login-logo {
       color: #eee;
     }
     button.send-button {
-      background: #fffc00;
+      background: #0DB561;
       border: none;
-      color: #111;
+      color: #fff;
       border-radius: 50%;
       width: 44px;
       height: 44px;
-      font-size: 20px;
+      font-size: 24px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
       cursor: pointer;
-      transition: 0.3s;
+      transition: background 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     button.send-button:hover {
-      background: #e6e000;
+      background: #0C9F54;
     }
     button.send-button.edit-mode {
-      background: #4CAF50;
+      background: #0B8C48;
       color: #fff;
     }
     button.send-button.edit-mode:hover {
-      background: #45a049;
+      background: #0A7A3F;
     }
     #messages > div[style*="text-align: center"] {
       font-size: 11px;
@@ -454,7 +458,7 @@ body.dark #login-logo {
       button.send-button {
         width: 40px;
         height: 40px;
-        font-size: 18px;
+        font-size: 20px;
       }
       .reaction-bar {
         top: -25px;
@@ -470,6 +474,10 @@ body.dark #login-logo {
       #message {
         height: 40px;
       }
+      #login-logo {
+        width: 80px;
+        margin-bottom: 15px;
+      }
     }
     .reply-to {
       font-size: 12px;
@@ -481,14 +489,14 @@ body.dark #login-logo {
   </style>
 </head>
 <body>
- <div id="login-container">
-  <img src="https://raw.githubusercontent.com/sidsharths1245/SMChat/refs/heads/main/logo.png" alt="Chat Logo" id="login-logo" />
-  <h1>Login to Chat</h1>
-  <input id="username" placeholder="Username" />
-  <input id="pin" type="password" placeholder="PIN" />
-  <button onclick="login()">Login</button>
-  <div id="login-error">Invalid username or PIN</div>
-</div>
+  <div id="login-container">
+    <img src="https://raw.githubusercontent.com/sidsharths1245/SMChat/refs/heads/main/logo.png" alt="Chat Logo" id="login-logo" />
+    <h1>Login to Chat</h1>
+    <input id="username" placeholder="Username" />
+    <input id="pin" type="password" placeholder="PIN" />
+    <button onclick="login()">Login</button>
+    <div id="login-error">Invalid username or PIN</div>
+  </div>
   <div id="chat-container" class="hidden">
     <div id="chat-header">
       <span id="chat-with"></span>
@@ -511,7 +519,7 @@ body.dark #login-logo {
       </div>
       <div class="input-row">
         <textarea id="message" placeholder="Type a message" autocomplete="off"></textarea>
-        <button class="send-button" onclick="sendOrEditMessage()">➤</button>
+        <button class="send-button" onclick="sendOrEditMessage()"><span class="material-icons">send</span></button>
       </div>
     </div>
   </div>
@@ -730,7 +738,7 @@ body.dark #login-logo {
       messageInput.focus();
       const sendButton = document.querySelector(".send-button");
       sendButton.classList.add("edit-mode");
-      sendButton.textContent = "✔";
+      sendButton.innerHTML = '<span class="material-icons">check</span>';
       document.getElementById("reply-preview").style.display = "block";
       document.getElementById("prefix-text").textContent = "Editing message";
       document.getElementById("reply-text").textContent = msgText;
@@ -743,7 +751,7 @@ body.dark #login-logo {
       messageInput.value = "";
       const sendButton = document.querySelector(".send-button");
       sendButton.classList.remove("edit-mode");
-      sendButton.textContent = "➤";
+      sendButton.innerHTML = '<span class="material-icons">send</span>';
       document.getElementById("reply-preview").style.display = "none";
       document.getElementById("prefix-text").textContent = "";
       document.getElementById("reply-text").textContent = "";
@@ -1002,7 +1010,7 @@ body.dark #login-logo {
       bubble.addEventListener("touchmove", (e) => {
         touchCurrentX = e.touches[0].clientX;
         const deltaX = touchCurrentX - touchStartX;
-        if (Math.abs(deltaX) < 100) { // Limit swipe distance
+        if (Math.abs(deltaX) < 100) {
           msgRow.style.transform = `translateX(${deltaX}px)`;
         }
       });
@@ -1010,7 +1018,7 @@ body.dark #login-logo {
         const deltaX = touchCurrentX - touchStartX;
         msgRow.classList.remove("swiping");
         msgRow.style.transform = "translateX(0)";
-        if (Math.abs(deltaX) > 50) { // Swipe threshold
+        if (Math.abs(deltaX) > 50) {
           replyTo = msg.text;
           document.getElementById("prefix-text").textContent = "Replying to";
           document.getElementById("reply-text").textContent = msg.text;

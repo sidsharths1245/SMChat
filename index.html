@@ -131,6 +131,37 @@
     body.dark #menu button:hover {
       background: #333;
     }
+    #message-menu {
+      position: absolute;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      display: none;
+      z-index: 4;
+    }
+    body.dark #message-menu {
+      background: #2a2a2a;
+    }
+    #message-menu button {
+      display: block;
+      width: 100%;
+      padding: 10px 20px;
+      background: none;
+      border: none;
+      text-align: left;
+      font-size: 14px;
+      cursor: pointer;
+      color: #111;
+    }
+    body.dark #message-menu button {
+      color: #eee;
+    }
+    #message-menu button:hover {
+      background: #f0f0f0;
+    }
+    body.dark #message-menu button:hover {
+      background: #333;
+    }
     #typing {
       font-size: 12px;
       text-align: center;
@@ -316,10 +347,10 @@
       outline: none;
       background: #fff;
       transition: 0.3s;
-      resize: none; /* Prevent resizing */
-      height: 44px; /* Match the send button height */
-      line-height: 1.4; /* Align text vertically */
-      font-family: 'Segoe UI', Roboto, sans-serif; /* Match body font */
+      resize: none;
+      height: 44px;
+      line-height: 1.4;
+      font-family: 'Segoe UI', Roboto, sans-serif;
     }
     body.dark #message {
       background: #222;
@@ -370,7 +401,7 @@
         padding: 2px 6px;
       }
       #message {
-        height: 40px; /* Match smaller send button height */
+        height: 40px;
       }
     }
     .reply-to {
@@ -420,7 +451,7 @@
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
     import {
-      getDatabase, ref, push, onChildAdded, onValue, set, remove, update
+      getDatabase, ref, push, onChildAdded, onChildChanged, onChildRemoved, onValue, set, remove, update
     } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 
     const firebaseConfig = {
@@ -443,22 +474,18 @@
     let lastMessageId = null;
     let replyTo = null;
 
-    // Valid users and their pins
     const validUsers = {
       "Shiv": "1234",
       "Monika": "5678"
     };
 
-    // Available emojis for reactions
     const emojis = ['😊', '👍', '❤️', '😂', '😢'];
 
-    // Initialize theme
     if (localStorage.getItem("theme") === "dark") {
       document.body.classList.add("dark");
     }
     updateThemeButtonText();
 
-    // Check if user is already logged in
     if (currentUser && validUsers[currentUser]) {
       showChat();
       updateHeader();
@@ -482,7 +509,6 @@
       const pin = document.getElementById("pin").value.trim();
       const errorDiv = document.getElementById("login-error");
 
-      // Convert input username to title case for case-insensitive comparison
       const username = usernameInput.charAt(0).toUpperCase() + usernameInput.slice(1).toLowerCase();
 
       if (validUsers[username] && validUsers[username] === pin) {
@@ -502,7 +528,7 @@
       currentUser = null;
       document.getElementById("menu").style.display = "none";
       showLogin();
-      document.getElementById("username").value = "";
+      document.getElementById("username").spa = "";
       document.getElementById("pin").value = "";
       document.getElementById("messages").innerHTML = "";
     }
@@ -524,31 +550,33 @@
         currentUser === "Monika" ? "Chatting with Shiv" : "Chatting with Monika";
     }
 
-    // Menu toggle
     document.getElementById("menu-button").onclick = () => {
       const menu = document.getElementById("menu");
       menu.style.display = menu.style.display === "block" ? "none" : "block";
     };
 
-    // Close menu when clicking outside
     document.addEventListener("click", (e) => {
       const menu = document.getElementById("menu");
       const menuButton = document.getElementById("menu-button");
+      const messageMenu = document.getElementById("message-menu");
       if (!menu.contains(e.target) && !menuButton.contains(e.target)) {
         menu.style.display = "none";
+      }
+      if (messageMenu && !messageMenu.contains(e.target)) {
+        messageMenu.style.display = "none";
       }
     });
 
     const messageInput = document.getElementById("message");
     messageInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault(); // Prevent newline in textarea
+      if (e.key === "Enter" && e.ctrlKey) {
+        e.preventDefault();
         sendMessage();
       }
       set(typingRef, currentUser + " is typing...");
     });
     messageInput.addEventListener("keyup", (e) => {
-      if (e.key !== "Enter") setTimeout(() => set(typingRef, ""), 1000);
+      setTimeout(() => set(typingRef, ""), 1000);
     });
 
     function sendMessage() {
@@ -556,8 +584,12 @@
       if (!text) return;
 
       if (text === "#clear") {
-        remove(messagesRef);
-        remove(readRef);
+        remove(messagesRef).catch((error) => {
+          console.error("Error clearing messages:", error);
+        });
+        remove(readRef).catch((error) => {
+          console.error("Error clearing read receipts:", error);
+        });
         messageInput.value = "";
         document.getElementById("messages").innerHTML = "";
         return;
@@ -587,11 +619,56 @@
         timeDate: now.toISOString(),
         reply: replyTo,
         reactions: {}
+      }).catch((error) => {
+        console.error("Error sending message:", error);
       });
 
       messageInput.value = "";
-      set(typingRef, "");
+      set(typingRef, "").catch((error) => {
+        console.error("Error clearing typing status:", error);
+      });
       clearReply();
+    }
+
+    function editMessage(msgId, oldText) {
+      const newText = prompt("Edit your message:", oldText);
+      if (newText !== null && newText.trim() !== "") {
+        const messageRef = ref(db, `messages/${msgId}`);
+        update(messageRef, { 
+          text: newText.trim(),
+          edited: true,
+          editedAt: new Date().toISOString()
+        }).then(() => {
+          console.log("Message updated successfully");
+        }).catch((error) => {
+          console.error("Error updating message:", error);
+          alert("Failed to edit message. Please check your permissions or try again.");
+        });
+      }
+    }
+
+    function deleteMessage(msgId, forEveryone = false) {
+      const messageRef = ref(db, `messages/${msgId}`);
+      if (forEveryone) {
+        remove(messageRef).then(() => {
+          console.log("Message deleted for everyone");
+        }).catch((error) => {
+          console.error("Error deleting message for everyone:", error);
+          alert("Failed to delete message for everyone. Please check your permissions or try again.");
+        });
+      } else {
+        update(messageRef, { 
+          text: "This message was deleted",
+          deleted: true,
+          deletedBy: currentUser,
+          deletedAt: new Date().toISOString()
+        }).then(() => {
+          console.log("Message marked as deleted for me");
+        }).catch((error) => {
+          console.error("Error marking message as deleted:", error);
+          alert("Failed to delete message for me. Please check your permissions or try again.");
+        });
+      }
     }
 
     function clearReply() {
@@ -604,7 +681,9 @@
 
     function updateReadReceipt(msgId) {
       if (document.visibilityState === "visible") {
-        update(readRef, { [currentUser]: msgId });
+        update(readRef, { [currentUser]: msgId }).catch((error) => {
+          console.error("Error updating read receipt:", error);
+        });
       }
     }
 
@@ -635,7 +714,7 @@
     function addReaction(msgId, emoji) {
       const reactionRef = ref(db, `messages/${msgId}/reactions/${currentUser}`);
       set(reactionRef, emoji).then(() => {
-        // Force re-render reactions after adding
+        console.log("Reaction added successfully");
         const bubble = document.querySelector(`.msg-row[data-id="${msgId}"] .msg`);
         if (bubble) {
           onValue(ref(db, `messages/${msgId}/reactions`), (snapshot) => {
@@ -645,6 +724,7 @@
         }
       }).catch((error) => {
         console.error("Error adding reaction:", error);
+        alert("Failed to add reaction. Please check your permissions or try again.");
       });
     }
 
@@ -667,6 +747,66 @@
       } else {
         reactionDiv.style.display = 'none';
       }
+    }
+
+    function showMessageMenu(e, msgId, msgText, isCurrentUser, reactionBar) {
+      e.preventDefault();
+      let messageMenu = document.getElementById("message-menu");
+      if (!messageMenu) {
+        messageMenu = document.createElement("div");
+        messageMenu.id = "message-menu";
+        document.body.appendChild(messageMenu);
+      }
+      messageMenu.innerHTML = '';
+
+      const reactionsButton = document.createElement("button");
+      reactionsButton.textContent = "Reactions";
+      reactionsButton.onclick = () => {
+        reactionBar.style.display = "flex";
+        messageMenu.style.display = "none";
+      };
+      messageMenu.appendChild(reactionsButton);
+
+      if (isCurrentUser) {
+        const editButton = document.createElement("button");
+        editButton.textContent = "Edit Message";
+        editButton.onclick = () => {
+          editMessage(msgId, msgText);
+          messageMenu.style.display = "none";
+        };
+        messageMenu.appendChild(editButton);
+
+        const deleteForMeButton = document.createElement("button");
+        deleteForMeButton.textContent = "Delete for Me";
+        deleteForMeButton.onclick = () => {
+          deleteMessage(msgId, false);
+          messageMenu.style.display = "none";
+        };
+        messageMenu.appendChild(deleteForMeButton);
+
+        const deleteForEveryoneButton = document.createElement("button");
+        deleteForEveryoneButton.textContent = "Delete for Everyone";
+        deleteForEveryoneButton.onclick = () => {
+          deleteMessage(msgId, true);
+          messageMenu.style.display = "none";
+        };
+        messageMenu.appendChild(deleteForEveryoneButton);
+      }
+
+      const replyButton = document.createElement("button");
+      replyButton.textContent = "Reply";
+      replyButton.onclick = () => {
+        replyTo = msgText;
+        document.getElementById("reply-text").textContent = msgText;
+        document.getElementById("reply-preview").style.display = "block";
+        messageMenu.style.display = "none";
+      };
+      messageMenu.appendChild(replyButton);
+
+      const rect = e.target.getBoundingClientRect();
+      messageMenu.style.top = `${rect.bottom + window.scrollY}px`;
+      messageMenu.style.left = `${rect.left + window.scrollX}px`;
+      messageMenu.style.display = "block";
     }
 
     function appendMessage(id, msg) {
@@ -699,15 +839,14 @@
         bubble.appendChild(replyDiv);
       }
 
+      const displayText = msg.deleted ? "This message was deleted" : msg.text;
       bubble.innerHTML += `
-        <div>${msg.text}</div>
+        <div>${displayText}${msg.edited ? ' <span style="font-size: 10px; color: #888;">(edited)</span>' : ''}</div>
         <div class="timestamp">${msg.time || ""}</div>
       `;
 
-      // Render reactions
       renderReactions(bubble, id, msg.reactions);
 
-      // Create reaction bar
       const reactionBar = document.createElement("div");
       reactionBar.className = "reaction-bar";
       emojis.forEach(emoji => {
@@ -726,31 +865,10 @@
       messages.appendChild(msgRow);
       messages.scrollTop = messages.scrollHeight;
 
-      // Hover events for desktop
-      let isHoveringBar = false;
-      reactionBar.addEventListener("mouseenter", () => {
-        isHoveringBar = true;
-      });
-      reactionBar.addEventListener("mouseleave", () => {
-        isHoveringBar = false;
-        reactionBar.style.display = "none";
-      });
-      bubble.addEventListener("mouseenter", () => {
-        reactionBar.style.display = "flex";
-      });
-      bubble.addEventListener("mouseleave", () => {
-        setTimeout(() => {
-          if (!isHoveringBar) {
-            reactionBar.style.display = "none";
-          }
-        }, 100);
-      });
-
-      // Long press for mobile
       let touchTimer;
       bubble.addEventListener("touchstart", (e) => {
         touchTimer = setTimeout(() => {
-          reactionBar.style.display = "flex";
+          showMessageMenu(e, id, msg.text, isCurrentUser, reactionBar);
         }, 500);
       });
       bubble.addEventListener("touchend", () => {
@@ -760,31 +878,13 @@
         clearTimeout(touchTimer);
       });
 
-      // Reply functionality
       bubble.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        replyTo = msg.text;
-        document.getElementById("reply-text").textContent = msg.text;
-        document.getElementById("reply-preview").style.display = "block";
-      });
-
-      let touchstartX = 0;
-      bubble.addEventListener("touchstart", e => {
-        touchstartX = e.changedTouches[0].screenX;
-      });
-      bubble.addEventListener("touchend", e => {
-        const deltaX = e.changedTouches[0].screenX - touchstartX;
-        if (Math.abs(deltaX) > 50) {
-          replyTo = msg.text;
-          document.getElementById("reply-text").textContent = msg.text;
-          document.getElementById("reply-preview").style.display = "block";
-        }
+        showMessageMenu(e, id, msg.text, isCurrentUser, reactionBar);
       });
 
       if (!isCurrentUser) updateReadReceipt(id);
       else renderSeenIndicator(id);
 
-      // Listen for reaction updates
       onValue(ref(db, `messages/${id}/reactions`), (snapshot) => {
         const reactions = snapshot.val() || {};
         renderReactions(bubble, id, reactions);
@@ -796,7 +896,6 @@
       messages.innerHTML = "";
       messages.setAttribute("data-last-date", "");
 
-      // Load all existing messages
       onValue(messagesRef, (snapshot) => {
         messages.innerHTML = "";
         messages.setAttribute("data-last-date", "");
@@ -808,7 +907,6 @@
         messages.scrollTop = messages.scrollHeight;
       }, { onlyOnce: true });
 
-      // Listen for new messages
       onChildAdded(messagesRef, (data) => {
         const msg = data.val();
         const isFromOtherUser = msg.name !== currentUser;
@@ -830,6 +928,54 @@
           lastMessageId = data.key;
         }
       });
+
+      onChildChanged(messagesRef, (data) => {
+        const msg = data.val();
+        const msgRow = document.querySelector(`.msg-row[data-id="${data.key}"]`);
+        if (msgRow) {
+          const bubble = msgRow.querySelector(".msg");
+          const timestamp = bubble.querySelector(".timestamp");
+          bubble.innerHTML = "";
+          if (msg.reply) {
+            const replyDiv = document.createElement("div");
+            replyDiv.className = "reply-to";
+            replyDiv.textContent = msg.reply;
+            bubble.appendChild(replyDiv);
+          }
+          const displayText = msg.deleted ? "This message was deleted" : msg.text;
+          bubble.innerHTML += `
+            <div>${displayText}${msg.edited ? ' <span style="font-size: 10px; color: #888;">(edited)</span>' : ''}</div>
+            <div class="timestamp">${msg.time || ""}</div>
+          `;
+          renderReactions(bubble, data.key, msg.reactions);
+          if (msg.name === currentUser) {
+            renderSeenIndicator(data.key);
+          }
+        }
+      });
+
+      onChildRemoved(messagesRef, (data) => {
+        const msgRow = document.querySelector(`.msg-row[data-id="${data.key}"]`);
+        if (msgRow) {
+          msgRow.remove();
+        }
+        const messagesDiv = document.getElementById("messages");
+        const remainingMessages = messagesDiv.querySelectorAll(".msg-row");
+        if (remainingMessages.length === 0) {
+          messagesDiv.setAttribute("data-last-date", "");
+        } else {
+          messagesDiv.innerHTML = "";
+          messagesDiv.setAttribute("data-last-date", "");
+          onValue(messagesRef, (snapshot) => {
+            if (snapshot.exists()) {
+              snapshot.forEach((child) => {
+                appendMessage(child.key, child.val());
+              });
+            }
+            messages.scrollTop = messages.scrollHeight;
+          }, { onlyOnce: true });
+        }
+      });
     }
 
     onValue(typingRef, (snapshot) => {
@@ -842,7 +988,6 @@
       }
     });
 
-    // Allow Enter key to submit login
     document.getElementById("pin").addEventListener("keydown", (e) => {
       if (e.key === "Enter") login();
     });

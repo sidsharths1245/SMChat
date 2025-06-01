@@ -191,6 +191,10 @@
     .msg-row {
       display: flex;
       position: relative;
+      transition: transform 0.2s ease-out;
+    }
+    .msg-row.swiping {
+      transform: translateX(0);
     }
     .left {
       justify-content: flex-start;
@@ -308,37 +312,68 @@
     }
     #reply-preview {
       display: none;
-      padding: 6px 10px;
-      font-size: 13px;
-      background: #eee;
-      border-left: 4px solid #999;
-      margin-bottom: 6px;
+      padding: 10px 12px;
+      font-size: 14px;
+      background: #e8ecef;
+      border-radius: 8px;
+      border-left: 4px solid #007bff;
+      margin-bottom: 8px;
       position: relative;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: background 0.3s;
     }
     body.dark #reply-preview {
-      background: #2b2b2b;
-      border-color: #666;
+      background: #2c3034;
+      border-color: #4da8ff;
+      color: #d1d5db;
     }
-    #reply-preview span {
+    #reply-preview span#reply-text {
       display: block;
-      max-width: 90%;
+      max-width: 85%;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      color: #333;
+      font-weight: 500;
     }
-    #cancel-reply {
+    body.dark #reply-preview span#reply-text {
+      color: #d1d5db;
+    }
+    #reply-preview span#prefix-text {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 4px;
+      display: block;
+    }
+    body.dark #reply-preview span#prefix-text {
+      color: #9ca3af;
+    }
+    #cancel-reply, #cancel-edit {
       position: absolute;
-      right: 6px;
-      top: 6px;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
       cursor: pointer;
+      font-size: 16px;
       font-weight: bold;
+      color: #666;
+      padding: 4px;
+      border-radius: 50%;
+      transition: color 0.2s, background 0.2s;
+    }
+    #cancel-reply:hover, #cancel-edit:hover {
+      color: #333;
+      background: rgba(0,0,0,0.1);
+    }
+    body.dark #cancel-reply, body.dark #cancel-edit {
+      color: #9ca3af;
+    }
+    body.dark #cancel-reply:hover, body.dark #cancel-edit:hover {
+      color: #d1d5db;
+      background: rgba(255,255,255,0.1);
     }
     #cancel-edit {
-      position: absolute;
-      right: 24px;
-      top: 6px;
-      cursor: pointer;
-      font-weight: bold;
+      right: 36px;
     }
     .input-row {
       display: flex;
@@ -449,7 +484,12 @@
     <div id="typing"></div>
     <div id="messages"></div>
     <div id="input-area">
-      <div id="reply-preview"><span id="reply-text"></span><span id="cancel-reply">×</span><span id="cancel-edit">×</span></div>
+      <div id="reply-preview">
+        <span id="prefix-text"></span>
+        <span id="reply-text"></span>
+        <span id="cancel-reply">×</span>
+        <span id="cancel-edit">×</span>
+      </div>
       <div class="input-row">
         <textarea id="message" placeholder="Type a message" autocomplete="off"></textarea>
         <button class="send-button" onclick="sendOrEditMessage()">➤</button>
@@ -673,7 +713,8 @@
       sendButton.classList.add("edit-mode");
       sendButton.textContent = "✔";
       document.getElementById("reply-preview").style.display = "block";
-      document.getElementById("reply-text").textContent = "Editing message...";
+      document.getElementById("prefix-text").textContent = "Editing message";
+      document.getElementById("reply-text").textContent = msgText;
       document.getElementById("cancel-edit").style.display = "inline";
       document.getElementById("cancel-reply").style.display = "none";
     }
@@ -685,6 +726,7 @@
       sendButton.classList.remove("edit-mode");
       sendButton.textContent = "➤";
       document.getElementById("reply-preview").style.display = "none";
+      document.getElementById("prefix-text").textContent = "";
       document.getElementById("reply-text").textContent = "";
       document.getElementById("cancel-edit").style.display = "none";
       document.getElementById("cancel-reply").style.display = "inline";
@@ -717,6 +759,7 @@
     function clearReply() {
       replyTo = null;
       document.getElementById("reply-preview").style.display = "none";
+      document.getElementById("prefix-text").textContent = "";
       document.getElementById("reply-text").textContent = "";
       document.getElementById("cancel-reply").style.display = "inline";
       document.getElementById("cancel-edit").style.display = "none";
@@ -843,6 +886,7 @@
       replyButton.textContent = "Reply";
       replyButton.onclick = () => {
         replyTo = msgText;
+        document.getElementById("prefix-text").textContent = "Replying to";
         document.getElementById("reply-text").textContent = msgText;
         document.getElementById("reply-preview").style.display = "block";
         document.getElementById("cancel-reply").style.display = "inline";
@@ -928,6 +972,33 @@
 
       bubble.addEventListener("contextmenu", (e) => {
         showMessageMenu(e, id, msg.text, isCurrentUser, reactionBar);
+      });
+
+      let touchStartX = 0;
+      let touchCurrentX = 0;
+      bubble.addEventListener("touchstart", (e) => {
+        touchStartX = e.touches[0].clientX;
+        msgRow.classList.add("swiping");
+      });
+      bubble.addEventListener("touchmove", (e) => {
+        touchCurrentX = e.touches[0].clientX;
+        const deltaX = touchCurrentX - touchStartX;
+        if (Math.abs(deltaX) < 100) { // Limit swipe distance
+          msgRow.style.transform = `translateX(${deltaX}px)`;
+        }
+      });
+      bubble.addEventListener("touchend", (e) => {
+        const deltaX = touchCurrentX - touchStartX;
+        msgRow.classList.remove("swiping");
+        msgRow.style.transform = "translateX(0)";
+        if (Math.abs(deltaX) > 50) { // Swipe threshold
+          replyTo = msg.text;
+          document.getElementById("prefix-text").textContent = "Replying to";
+          document.getElementById("reply-text").textContent = msg.text;
+          document.getElementById("reply-preview").style.display = "block";
+          document.getElementById("cancel-reply").style.display = "inline";
+          document.getElementById("cancel-edit").style.display = "none";
+        }
       });
 
       if (!isCurrentUser) updateReadReceipt(id);

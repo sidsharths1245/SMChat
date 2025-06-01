@@ -159,6 +159,7 @@
     }
     .msg-row {
       display: flex;
+      position: relative;
     }
     .left {
       justify-content: flex-start;
@@ -199,6 +200,71 @@
       text-align: right;
       margin-top: 4px;
       color: #888;
+    }
+    .reaction-bar {
+      position: absolute;
+      top: -30px;
+      background: #f8f8f8;
+      border-radius: 20px;
+      padding: 6px 12px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+      border: 1px solid #ddd;
+      display: none;
+      z-index: 3;
+      flex-direction: row;
+      transition: background 0.2s;
+    }
+    .reaction-bar:hover {
+      background: #f0f0f0;
+    }
+    .left .reaction-bar {
+      left: 10px;
+    }
+    .right .reaction-bar {
+      right: 10px;
+    }
+    body.dark .reaction-bar {
+      background: #2a2a2a;
+      border: 1px solid #555;
+    }
+    body.dark .reaction-bar:hover {
+      background: #333;
+    }
+    .reaction-bar span {
+      font-size: 18px;
+      margin: 0 5px;
+      cursor: pointer;
+    }
+    .reaction-bar span:hover {
+      transform: scale(1.2);
+    }
+    .reactions {
+      font-size: 12px;
+      margin-top: 4px;
+      color: #333;
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+    .left .reactions span {
+      background: #e8f0fe;
+      border: 1px solid #d0d7e5;
+      border-radius: 10px;
+      padding: 3px 8px;
+    }
+    .right .reactions span {
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid #b0c4a0;
+      border-radius: 10px;
+      padding: 3px 8px;
+    }
+    body.dark .reactions {
+      color: #eee;
+    }
+    body.dark .reactions span {
+      background: #333;
+      border: 1px solid #555;
+      color: #eee;
     }
     #input-area {
       position: sticky;
@@ -288,6 +354,17 @@
         height: 40px;
         font-size: 18px;
       }
+      .reaction-bar {
+        top: -25px;
+        padding: 5px 10px;
+      }
+      .reaction-bar span {
+        font-size: 16px;
+        margin: 0 3px;
+      }
+      .reactions span {
+        padding: 2px 6px;
+      }
     }
     .reply-to {
       font-size: 12px;
@@ -301,7 +378,7 @@
 <body>
   <div id="login-container">
     <h1>Login to Chat</h1>
-    <input id="username" placeholder="Username" />
+    <input id="username" placeholder="Username (Shiv or Monika)" />
     <input id="pin" type="password" placeholder="PIN" />
     <button onclick="login()">Login</button>
     <div id="login-error">Invalid username or PIN</div>
@@ -364,6 +441,9 @@
       "Shiv": "1234",
       "Monika": "5678"
     };
+
+    // Available emojis for reactions
+    const emojis = ['😊', '👍', '❤️', '😂', '😢'];
 
     // Initialize theme
     if (localStorage.getItem("theme") === "dark") {
@@ -495,7 +575,8 @@
         text,
         time,
         timeDate: now.toISOString(),
-        reply: replyTo
+        reply: replyTo,
+        reactions: {}
       });
 
       messageInput.value = "";
@@ -522,7 +603,7 @@
         const reads = snapshot.val() || {};
         const otherUser = currentUser === "Shiv" ? "Monika" : "Shiv";
         if (reads[otherUser] === msgId) {
-          const lastBubble = document.querySelector('.msg-row.right:last-child .timestamp');
+          const lastBubble = document.querySelector(`.msg-row.right[data-id="${msgId}"] .timestamp`);
           if (lastBubble && !lastBubble.textContent.includes("✓")) {
             lastBubble.textContent += " ✓ Seen";
           }
@@ -539,6 +620,43 @@
       if (isToday) return "Today";
       if (msgDate.toDateString() === yesterday.toDateString()) return "Yesterday";
       return msgDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    function addReaction(msgId, emoji) {
+      const reactionRef = ref(db, `messages/${msgId}/reactions/${currentUser}`);
+      set(reactionRef, emoji).then(() => {
+        // Force re-render reactions after adding
+        const bubble = document.querySelector(`.msg-row[data-id="${msgId}"] .msg`);
+        if (bubble) {
+          onValue(ref(db, `messages/${msgId}/reactions`), (snapshot) => {
+            const reactions = snapshot.val() || {};
+            renderReactions(bubble, msgId, reactions);
+          }, { onlyOnce: true });
+        }
+      }).catch((error) => {
+        console.error("Error adding reaction:", error);
+      });
+    }
+
+    function renderReactions(bubble, msgId, reactions) {
+      let reactionDiv = bubble.querySelector('.reactions');
+      if (!reactionDiv) {
+        reactionDiv = document.createElement('div');
+        reactionDiv.className = 'reactions';
+        bubble.appendChild(reactionDiv);
+      }
+      reactionDiv.innerHTML = '';
+
+      if (reactions && Object.keys(reactions).length > 0) {
+        for (const [user, emoji] of Object.entries(reactions)) {
+          const reactionSpan = document.createElement('span');
+          reactionSpan.textContent = `${emoji} ${user}`;
+          reactionDiv.appendChild(reactionSpan);
+        }
+        reactionDiv.style.display = 'flex';
+      } else {
+        reactionDiv.style.display = 'none';
+      }
     }
 
     function appendMessage(id, msg) {
@@ -576,10 +694,63 @@
         <div class="timestamp">${msg.time || ""}</div>
       `;
 
+      // Render reactions
+      renderReactions(bubble, id, msg.reactions);
+
+      // Create reaction bar
+      const reactionBar = document.createElement("div");
+      reactionBar.className = "reaction-bar";
+      emojis.forEach(emoji => {
+        const emojiSpan = document.createElement("span");
+        emojiSpan.textContent = emoji;
+        emojiSpan.onclick = (e) => {
+          e.stopPropagation();
+          addReaction(id, emoji);
+          reactionBar.style.display = "none";
+        };
+        reactionBar.appendChild(emojiSpan);
+      });
+
+      msgRow.appendChild(reactionBar);
       msgRow.appendChild(bubble);
       messages.appendChild(msgRow);
       messages.scrollTop = messages.scrollHeight;
 
+      // Hover events for desktop
+      let isHoveringBar = false;
+      reactionBar.addEventListener("mouseenter", () => {
+        isHoveringBar = true;
+      });
+      reactionBar.addEventListener("mouseleave", () => {
+        isHoveringBar = false;
+        reactionBar.style.display = "none";
+      });
+      bubble.addEventListener("mouseenter", () => {
+        reactionBar.style.display = "flex";
+      });
+      bubble.addEventListener("mouseleave", () => {
+        setTimeout(() => {
+          if (!isHoveringBar) {
+            reactionBar.style.display = "none";
+          }
+        }, 100);
+      });
+
+      // Long press for mobile
+      let touchTimer;
+      bubble.addEventListener("touchstart", (e) => {
+        touchTimer = setTimeout(() => {
+          reactionBar.style.display = "flex";
+        }, 500);
+      });
+      bubble.addEventListener("touchend", () => {
+        clearTimeout(touchTimer);
+      });
+      bubble.addEventListener("touchmove", () => {
+        clearTimeout(touchTimer);
+      });
+
+      // Reply functionality
       bubble.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         replyTo = msg.text;
@@ -602,6 +773,12 @@
 
       if (!isCurrentUser) updateReadReceipt(id);
       else renderSeenIndicator(id);
+
+      // Listen for reaction updates
+      onValue(ref(db, `messages/${id}/reactions`), (snapshot) => {
+        const reactions = snapshot.val() || {};
+        renderReactions(bubble, id, reactions);
+      });
     }
 
     function startMessageListener() {

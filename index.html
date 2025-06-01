@@ -21,19 +21,115 @@
       background: #121212;
       color: #eee;
     }
+    #login-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    #login-container.hidden {
+      display: none;
+    }
+    #login-container h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    #login-container input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+      outline: none;
+    }
+    body.dark #login-container input {
+      background: #222;
+      border: 1px solid #555;
+      color: #eee;
+    }
+    #login-container button {
+      width: 100%;
+      padding: 12px;
+      background: #fffc00;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    #login-container button:hover {
+      background: #e6e000;
+    }
+    #login-error {
+      color: #d32f2f;
+      font-size: 14px;
+      margin-top: 10px;
+      display: none;
+    }
     #chat-header {
       position: sticky;
       top: 0;
       z-index: 2;
       background: transparent;
       font-size: 17px;
-      padding: 16px 0;
+      padding: 16px 10px;
       text-align: center;
       font-weight: 600;
       color: #111;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
     body.dark #chat-header {
       color: #fff;
+    }
+    #menu-button {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #111;
+    }
+    body.dark #menu-button {
+      color: #eee;
+    }
+    #menu {
+      position: absolute;
+      top: 50px;
+      right: 10px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      display: none;
+      z-index: 3;
+    }
+    body.dark #menu {
+      background: #2a2a2a;
+    }
+    #menu button {
+      display: block;
+      width: 100%;
+      padding: 10px 20px;
+      background: none;
+      border: none;
+      text-align: left;
+      font-size: 14px;
+      cursor: pointer;
+      color: #111;
+    }
+    body.dark #menu button {
+      color: #eee;
+    }
+    #menu button:hover {
+      background: #f0f0f0;
+    }
+    body.dark #menu button:hover {
+      background: #333;
     }
     #typing {
       font-size: 12px;
@@ -49,6 +145,9 @@
       max-width: 600px;
       margin: 0 auto;
       padding: 0 10px;
+    }
+    #chat-container.hidden {
+      display: none;
     }
     #messages {
       flex: 1;
@@ -157,7 +256,7 @@
       border: 1px solid #555;
       color: #eee;
     }
-    button {
+    button.send-button {
       background: #fffc00;
       border: none;
       color: #111;
@@ -169,7 +268,7 @@
       cursor: pointer;
       transition: 0.3s;
     }
-    button:hover {
+    button.send-button:hover {
       background: #e6e000;
     }
     #messages > div[style*="text-align: center"] {
@@ -184,7 +283,7 @@
         font-size: 14px;
         padding: 9px 12px;
       }
-      button {
+      button.send-button {
         width: 40px;
         height: 40px;
         font-size: 18px;
@@ -200,268 +299,371 @@
   </style>
 </head>
 <body>
-<div id="chat-container">
-  <div id="chat-header"><span id="chat-with"></span></div>
-  <div id="typing"></div>
-  <div id="messages"></div>
-  <div id="input-area">
-    <div id="reply-preview"><span id="reply-text"></span><span id="cancel-reply">×</span></div>
-    <div class="input-row">
-      <input id="message" placeholder="Type a message"/>
-      <button onclick="sendMessage()">➤</button>
+  <div id="login-container">
+    <h1>Login to Chat</h1>
+    <input id="username" placeholder="Username" />
+    <input id="pin" type="password" placeholder="PIN" />
+    <button onclick="login()">Login</button>
+    <div id="login-error">Invalid username or PIN</div>
+  </div>
+  <div id="chat-container" class="hidden">
+    <div id="chat-header">
+      <span id="chat-with"></span>
+      <div>
+        <button id="menu-button">⋮</button>
+        <div id="menu">
+          <button id="theme-toggle" onclick="toggleTheme()"></button>
+          <button onclick="logout()">Logout</button>
+        </div>
+      </div>
+    </div>
+    <div id="typing"></div>
+    <div id="messages"></div>
+    <div id="input-area">
+      <div id="reply-preview"><span id="reply-text"></span><span id="cancel-reply">×</span></div>
+      <div class="input-row">
+        <input id="message" placeholder="Type a message"/>
+        <button class="send-button" onclick="sendMessage()">➤</button>
+      </div>
     </div>
   </div>
-</div>
-<audio id="notify-sound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_846a730e18.mp3" preload="auto"></audio>
+  <audio id="notify-sound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_846a730e18.mp3" preload="auto"></audio>
 
-<script type="module">
-if (Notification.permission !== "granted") {
-  Notification.requestPermission();
-}
+  <script type="module">
+    if (Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-import {
-  getDatabase, ref, push, onChildAdded, onValue, set, remove, update
-} from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+    import {
+      getDatabase, ref, push, onChildAdded, onValue, set, remove, update
+    } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyC3ewLzG9uzaie20gvJIsliDXnU4k2VjqM",
-  authDomain: "chat-b6996.firebaseapp.com",
-  databaseURL: "https://chat-b6996-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "chat-b6996",
-  storageBucket: "chat-b6996.appspot.com",
-  messagingSenderId: "859974637172",
-  appId: "1:859974637172:web:8f7db61698bec9f081e321"
-};
+    const firebaseConfig = {
+      apiKey: "AIzaSyC3ewLzG9uzaie20gvJIsliDXnU4k2VjqM",
+      authDomain: "chat-b6996.firebaseapp.com",
+      databaseURL: "https://chat-b6996-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "chat-b6996",
+      storageBucket: "chat-b6996.appspot.com",
+      messagingSenderId: "859974637172",
+      appId: "1:859974637172:web:8f7db61698bec9f081e321"
+    };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const messagesRef = ref(db, "messages");
-const typingRef = ref(db, "typing");
-const readRef = ref(db, "readReceipts");
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const messagesRef = ref(db, "messages");
+    const typingRef = ref(db, "typing");
+    const readRef = ref(db, "readReceipts");
 
-let currentUser = "Monika";
-let lastMessageId = null;
-let replyTo = null;
+    let currentUser = localStorage.getItem("currentUser") || null;
+    let lastMessageId = null;
+    let replyTo = null;
 
-function updateHeader() {
-  document.getElementById("chat-with").textContent =
-    currentUser === "Monika" ? "Chatting with Shiv" : "Chatting with Monika";
-}
-if (localStorage.getItem("theme") === "dark") {
-  document.body.classList.add("dark");
-}
-updateHeader();
+    // Valid users and their pins
+    const validUsers = {
+      "Shiv": "1234",
+      "Monika": "5678"
+    };
 
-const messageInput = document.getElementById("message");
-messageInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") sendMessage();
-  set(typingRef, currentUser + " is typing...");
-});
-messageInput.addEventListener("keyup", (e) => {
-  if (e.key !== "Enter") setTimeout(() => set(typingRef, ""), 1000);
-});
+    // Initialize theme
+    if (localStorage.getItem("theme") === "dark") {
+      document.body.classList.add("dark");
+    }
+    updateThemeButtonText();
 
-function sendMessage() {
-  const text = messageInput.value.trim();
-  if (!text) return;
-
-  if (text === "#clear") {
-    remove(messagesRef);
-    remove(readRef);
-    messageInput.value = "";
-    return;
-  }
-  if (text === "#dark") {
-    document.body.classList.add("dark");
-    localStorage.setItem("theme", "dark");
-    messageInput.value = "";
-    return;
-  }
-  if (text === "#light") {
-    document.body.classList.remove("dark");
-    localStorage.setItem("theme", "light");
-    messageInput.value = "";
-    return;
-  }
-  if (text === "#switchshiv") {
-    const pin = prompt("Enter PIN to switch to Shiv:");
-    if (pin === "8483") {
-      currentUser = "Shiv";
+    // Check if user is already logged in
+    if (currentUser && validUsers[currentUser]) {
+      showChat();
       updateHeader();
-      reloadMessages();
-    } else alert("Incorrect PIN.");
-    messageInput.value = "";
-    return;
-  }
-  if (text === "#switchmonika") {
-    currentUser = "Monika";
-    updateHeader();
-    reloadMessages();
-    messageInput.value = "";
-    return;
-  }
+      startMessageListener();
+    } else {
+      showLogin();
+    }
 
-  const now = new Date();
-  const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    function showLogin() {
+      document.getElementById("login-container").classList.remove("hidden");
+      document.getElementById("chat-container").classList.add("hidden");
+    }
 
-  push(messagesRef, {
-    name: currentUser,
-    text,
-    time,
-    timeDate: now.toISOString(),
-    reply: replyTo
-  });
+    function showChat() {
+      document.getElementById("login-container").classList.add("hidden");
+      document.getElementById("chat-container").classList.remove("hidden");
+    }
 
-  messageInput.value = "";
-  set(typingRef, "");
-  clearReply();
-}
+    function login() {
+      const usernameInput = document.getElementById("username").value.trim();
+      const pin = document.getElementById("pin").value.trim();
+      const errorDiv = document.getElementById("login-error");
 
-function clearReply() {
-  replyTo = null;
-  document.getElementById("reply-preview").style.display = "none";
-  document.getElementById("reply-text").textContent = "";
-}
+      // Convert input username to title case for case-insensitive comparison
+      const username = usernameInput.charAt(0).toUpperCase() + usernameInput.slice(1).toLowerCase();
 
-document.getElementById("cancel-reply").onclick = clearReply;
-
-function updateReadReceipt(msgId) {
-  if (document.visibilityState === "visible") {
-    update(readRef, { [currentUser]: msgId });
-  }
-}
-
-function renderSeenIndicator(msgId) {
-  onValue(readRef, (snapshot) => {
-    const reads = snapshot.val() || {};
-    const otherUser = currentUser === "Shiv" ? "Monika" : "Shiv";
-    if (reads[otherUser] === msgId) {
-      const lastBubble = document.querySelector('.msg-row.right:last-child .timestamp');
-      if (lastBubble && !lastBubble.textContent.includes("✓")) {
-        lastBubble.textContent += " ✓ Seen";
+      if (validUsers[username] && validUsers[username] === pin) {
+        currentUser = username;
+        localStorage.setItem("currentUser", username);
+        errorDiv.style.display = "none";
+        showChat();
+        updateHeader();
+        startMessageListener();
+      } else {
+        errorDiv.style.display = "block";
       }
     }
-  });
-}
 
-function getDateLabel(dateStr) {
-  const msgDate = new Date(dateStr);
-  const now = new Date();
-  const isToday = msgDate.toDateString() === now.toDateString();
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  if (isToday) return "Today";
-  if (msgDate.toDateString() === yesterday.toDateString()) return "Yesterday";
-  return msgDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-function reloadMessages() {
-  const messages = document.getElementById("messages");
-  messages.innerHTML = "";
-  messages.setAttribute("data-last-date", "");
-
-  onValue(messagesRef, (snapshot) => {
-    messages.innerHTML = "";
-    messages.setAttribute("data-last-date", "");
-    snapshot.forEach((child) => {
-      appendMessage(child.key, child.val());
-    });
-    messages.scrollTop = messages.scrollHeight;
-  }, { onlyOnce: true });
-}
-
-function appendMessage(id, msg) {
-  const isCurrentUser = msg.name === currentUser;
-  const messages = document.getElementById("messages");
-
-  const dateLabel = getDateLabel(msg.timeDate || new Date().toISOString());
-  const lastDateLabel = messages.getAttribute("data-last-date");
-  if (lastDateLabel !== dateLabel) {
-    const dateDiv = document.createElement("div");
-    dateDiv.textContent = dateLabel;
-    dateDiv.style.textAlign = "center";
-    dateDiv.style.fontSize = "12px";
-    dateDiv.style.color = "#888";
-    dateDiv.style.margin = "10px 0 4px";
-    messages.appendChild(dateDiv);
-    messages.setAttribute("data-last-date", dateLabel);
-  }
-
-  const msgRow = document.createElement("div");
-  msgRow.className = "msg-row " + (isCurrentUser ? "right" : "left");
-
-  const bubble = document.createElement("div");
-  bubble.className = "msg";
-  if (msg.reply) {
-    const replyDiv = document.createElement("div");
-    replyDiv.className = "reply-to";
-    replyDiv.textContent = msg.reply;
-    bubble.appendChild(replyDiv);
-  }
-
-  bubble.innerHTML += `
-    <div>${msg.text}</div>
-    <div class="timestamp">${msg.time || ""}</div>
-  `;
-
-  msgRow.appendChild(bubble);
-  messages.appendChild(msgRow);
-  messages.scrollTop = messages.scrollHeight;
-
-  bubble.addEventListener("contextmenu", (e) => {
-    e.preventDefault();
-    replyTo = msg.text;
-    document.getElementById("reply-text").textContent = msg.text;
-    document.getElementById("reply-preview").style.display = "block";
-  });
-
-  let touchstartX = 0;
-  bubble.addEventListener("touchstart", e => {
-    touchstartX = e.changedTouches[0].screenX;
-  });
-  bubble.addEventListener("touchend", e => {
-    const deltaX = e.changedTouches[0].screenX - touchstartX;
-    if (Math.abs(deltaX) > 50) {
-      replyTo = msg.text;
-      document.getElementById("reply-text").textContent = msg.text;
-      document.getElementById("reply-preview").style.display = "block";
+    function logout() {
+      localStorage.removeItem("currentUser");
+      currentUser = null;
+      document.getElementById("menu").style.display = "none";
+      showLogin();
+      document.getElementById("username").value = "";
+      document.getElementById("pin").value = "";
+      document.getElementById("messages").innerHTML = "";
     }
-  });
 
-  if (!isCurrentUser) updateReadReceipt(id);
-  else renderSeenIndicator(id);
-}
+    function toggleTheme() {
+      document.body.classList.toggle("dark");
+      localStorage.setItem("theme", document.body.classList.contains("dark") ? "dark" : "light");
+      updateThemeButtonText();
+      document.getElementById("menu").style.display = "none";
+    }
 
-onChildAdded(messagesRef, (data) => {
-  const msg = data.val();
-  const isFromOtherUser = msg.name !== currentUser;
+    function updateThemeButtonText() {
+      const themeButton = document.getElementById("theme-toggle");
+      themeButton.textContent = document.body.classList.contains("dark") ? "Switch to Light Mode" : "Switch to Dark Mode";
+    }
 
-  if (lastMessageId !== data.key && isFromOtherUser) {
-    document.getElementById("notify-sound").play();
+    function updateHeader() {
+      document.getElementById("chat-with").textContent =
+        currentUser === "Monika" ? "Chatting with Shiv" : "Chatting with Monika";
+    }
 
-    if (document.visibilityState !== "visible" && Notification.permission === "granted") {
-      new Notification(`New message from ${msg.name}`, {
-        body: msg.text,
-        icon: "https://cdn-icons-png.flaticon.com/512/1077/1077012.png" // optional avatar/icon
+    // Menu toggle
+    document.getElementById("menu-button").onclick = () => {
+      const menu = document.getElementById("menu");
+      menu.style.display = menu.style.display === "block" ? "none" : "block";
+    };
+
+    // Close menu when clicking outside
+    document.addEventListener("click", (e) => {
+      const menu = document.getElementById("menu");
+      const menuButton = document.getElementById("menu-button");
+      if (!menu.contains(e.target) && !menuButton.contains(e.target)) {
+        menu.style.display = "none";
+      }
+    });
+
+    const messageInput = document.getElementById("message");
+    messageInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendMessage();
+      set(typingRef, currentUser + " is typing...");
+    });
+    messageInput.addEventListener("keyup", (e) => {
+      if (e.key !== "Enter") setTimeout(() => set(typingRef, ""), 1000);
+    });
+
+    function sendMessage() {
+      const text = messageInput.value.trim();
+      if (!text) return;
+
+      if (text === "#clear") {
+        remove(messagesRef);
+        remove(readRef);
+        messageInput.value = "";
+        document.getElementById("messages").innerHTML = "";
+        return;
+      }
+      if (text === "#dark") {
+        document.body.classList.add("dark");
+        localStorage.setItem("theme", "dark");
+        updateThemeButtonText();
+        messageInput.value = "";
+        return;
+      }
+      if (text === "#light") {
+        document.body.classList.remove("dark");
+        localStorage.setItem("theme", "light");
+        updateThemeButtonText();
+        messageInput.value = "";
+        return;
+      }
+
+      const now = new Date();
+      const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+      push(messagesRef, {
+        name: currentUser,
+        text,
+        time,
+        timeDate: now.toISOString(),
+        reply: replyTo
+      });
+
+      messageInput.value = "";
+      set(typingRef, "");
+      clearReply();
+    }
+
+    function clearReply() {
+      replyTo = null;
+      document.getElementById("reply-preview").style.display = "none";
+      document.getElementById("reply-text").textContent = "";
+    }
+
+    document.getElementById("cancel-reply").onclick = clearReply;
+
+    function updateReadReceipt(msgId) {
+      if (document.visibilityState === "visible") {
+        update(readRef, { [currentUser]: msgId });
+      }
+    }
+
+    function renderSeenIndicator(msgId) {
+      onValue(readRef, (snapshot) => {
+        const reads = snapshot.val() || {};
+        const otherUser = currentUser === "Shiv" ? "Monika" : "Shiv";
+        if (reads[otherUser] === msgId) {
+          const lastBubble = document.querySelector('.msg-row.right:last-child .timestamp');
+          if (lastBubble && !lastBubble.textContent.includes("✓")) {
+            lastBubble.textContent += " ✓ Seen";
+          }
+        }
       });
     }
-  }
 
-  lastMessageId = data.key;
-  appendMessage(data.key, msg);
-});
+    function getDateLabel(dateStr) {
+      const msgDate = new Date(dateStr);
+      const now = new Date();
+      const isToday = msgDate.toDateString() === now.toDateString();
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      if (isToday) return "Today";
+      if (msgDate.toDateString() === yesterday.toDateString()) return "Yesterday";
+      return msgDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    }
 
+    function appendMessage(id, msg) {
+      const isCurrentUser = msg.name === currentUser;
+      const messages = document.getElementById("messages");
 
-onValue(typingRef, (snapshot) => {
-  document.getElementById("typing").textContent = snapshot.val() || "";
-});
+      const dateLabel = getDateLabel(msg.timeDate || new Date().toISOString());
+      const lastDateLabel = messages.getAttribute("data-last-date");
+      if (lastDateLabel !== dateLabel) {
+        const dateDiv = document.createElement("div");
+        dateDiv.textContent = dateLabel;
+        dateDiv.style.textAlign = "center";
+        dateDiv.style.fontSize = "12px";
+        dateDiv.style.color = "#888";
+        dateDiv.style.margin = "10px 0 4px";
+        messages.appendChild(dateDiv);
+        messages.setAttribute("data-last-date", dateLabel);
+      }
 
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") reloadMessages();
-});
+      const msgRow = document.createElement("div");
+      msgRow.className = "msg-row " + (isCurrentUser ? "right" : "left");
+      msgRow.setAttribute("data-id", id);
 
-window.sendMessage = sendMessage;
-</script>
+      const bubble = document.createElement("div");
+      bubble.className = "msg";
+      if (msg.reply) {
+        const replyDiv = document.createElement("div");
+        replyDiv.className = "reply-to";
+        replyDiv.textContent = msg.reply;
+        bubble.appendChild(replyDiv);
+      }
+
+      bubble.innerHTML += `
+        <div>${msg.text}</div>
+        <div class="timestamp">${msg.time || ""}</div>
+      `;
+
+      msgRow.appendChild(bubble);
+      messages.appendChild(msgRow);
+      messages.scrollTop = messages.scrollHeight;
+
+      bubble.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        replyTo = msg.text;
+        document.getElementById("reply-text").textContent = msg.text;
+        document.getElementById("reply-preview").style.display = "block";
+      });
+
+      let touchstartX = 0;
+      bubble.addEventListener("touchstart", e => {
+        touchstartX = e.changedTouches[0].screenX;
+      });
+      bubble.addEventListener("touchend", e => {
+        const deltaX = e.changedTouches[0].screenX - touchstartX;
+        if (Math.abs(deltaX) > 50) {
+          replyTo = msg.text;
+          document.getElementById("reply-text").textContent = msg.text;
+          document.getElementById("reply-preview").style.display = "block";
+        }
+      });
+
+      if (!isCurrentUser) updateReadReceipt(id);
+      else renderSeenIndicator(id);
+    }
+
+    function startMessageListener() {
+      const messages = document.getElementById("messages");
+      messages.innerHTML = "";
+      messages.setAttribute("data-last-date", "");
+
+      // Load all existing messages
+      onValue(messagesRef, (snapshot) => {
+        messages.innerHTML = "";
+        messages.setAttribute("data-last-date", "");
+        if (snapshot.exists()) {
+          snapshot.forEach((child) => {
+            appendMessage(child.key, child.val());
+          });
+        }
+        messages.scrollTop = messages.scrollHeight;
+      }, { onlyOnce: true });
+
+      // Listen for new messages
+      onChildAdded(messagesRef, (data) => {
+        const msg = data.val();
+        const isFromOtherUser = msg.name !== currentUser;
+
+        if (!document.querySelector(`.msg-row[data-id="${data.key}"]`)) {
+          appendMessage(data.key, msg);
+
+          if (lastMessageId !== data.key && isFromOtherUser) {
+            document.getElementById("notify-sound").play();
+
+            if (document.visibilityState !== "visible" && Notification.permission === "granted") {
+              new Notification(`New message from ${msg.name}`, {
+                body: msg.text,
+                icon: "https://cdn-icons-png.flaticon.com/512/1077/1077012.png"
+              });
+            }
+          }
+
+          lastMessageId = data.key;
+        }
+      });
+    }
+
+    onValue(typingRef, (snapshot) => {
+      document.getElementById("typing").textContent = snapshot.val() || "";
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && currentUser) {
+        startMessageListener();
+      }
+    });
+
+    // Allow Enter key to submit login
+    document.getElementById("pin").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") login();
+    });
+
+    window.sendMessage = sendMessage;
+    window.login = login;
+    window.logout = logout;
+    window.toggleTheme = toggleTheme;
+  </script>
 </body>
 </html>

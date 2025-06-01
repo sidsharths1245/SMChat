@@ -5,6 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Shiv & Monika Chat</title>
   <style>
+  #login-logo {
+  width: 80px; /* Adjust size as needed */
+  height: auto;
+  margin-bottom: 20px;
+  display: block;
+  transition: filter 0.3s;
+}
+
+body.dark #login-logo {
+  filter: brightness(1.2); /* Slightly brighten logo in dark mode for visibility */
+}
+
+@media (max-width: 600px) {
+  #login-logo {
+    width: 80px; /* Smaller size for mobile screens */
+    margin-bottom: 15px;
+  }
+}
     * {
       box-sizing: border-box;
       margin: 0;
@@ -463,13 +481,14 @@
   </style>
 </head>
 <body>
-  <div id="login-container">
-    <h1>Login to Chat</h1>
-    <input id="username" placeholder="Username" />
-    <input id="pin" type="password" placeholder="PIN" />
-    <button onclick="login()">Login</button>
-    <div id="login-error">Invalid username or PIN</div>
-  </div>
+ <div id="login-container">
+  <img src="https://raw.githubusercontent.com/sidsharths1245/SMChat/refs/heads/main/logo.png" alt="Chat Logo" id="login-logo" />
+  <h1>Login to Chat</h1>
+  <input id="username" placeholder="Username" />
+  <input id="pin" type="password" placeholder="PIN" />
+  <button onclick="login()">Login</button>
+  <div id="login-error">Invalid username or PIN</div>
+</div>
   <div id="chat-container" class="hidden">
     <div id="chat-header">
       <span id="chat-with"></span>

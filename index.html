@@ -333,6 +333,13 @@
       cursor: pointer;
       font-weight: bold;
     }
+    #cancel-edit {
+      position: absolute;
+      right: 24px;
+      top: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
     .input-row {
       display: flex;
       align-items: center;
@@ -371,6 +378,13 @@
     }
     button.send-button:hover {
       background: #e6e000;
+    }
+    button.send-button.edit-mode {
+      background: #4CAF50;
+      color: #fff;
+    }
+    button.send-button.edit-mode:hover {
+      background: #45a049;
     }
     #messages > div[style*="text-align: center"] {
       font-size: 11px;
@@ -435,10 +449,10 @@
     <div id="typing"></div>
     <div id="messages"></div>
     <div id="input-area">
-      <div id="reply-preview"><span id="reply-text"></span><span id="cancel-reply">×</span></div>
+      <div id="reply-preview"><span id="reply-text"></span><span id="cancel-reply">×</span><span id="cancel-edit">×</span></div>
       <div class="input-row">
         <textarea id="message" placeholder="Type a message" autocomplete="off"></textarea>
-        <button class="send-button" onclick="sendMessage()">➤</button>
+        <button class="send-button" onclick="sendOrEditMessage()">➤</button>
       </div>
     </div>
   </div>
@@ -473,6 +487,7 @@
     let currentUser = localStorage.getItem("currentUser") || null;
     let lastMessageId = null;
     let replyTo = null;
+    let editingMessageId = null;
 
     const validUsers = {
       "Shiv": "1234",
@@ -526,9 +541,10 @@
     function logout() {
       localStorage.removeItem("currentUser");
       currentUser = null;
+      editingMessageId = null;
       document.getElementById("menu").style.display = "none";
       showLogin();
-      document.getElementById("username").spa = "";
+      document.getElementById("username").value = "";
       document.getElementById("pin").value = "";
       document.getElementById("messages").innerHTML = "";
     }
@@ -571,7 +587,7 @@
     messageInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && e.ctrlKey) {
         e.preventDefault();
-        sendMessage();
+        sendOrEditMessage();
       }
       set(typingRef, currentUser + " is typing...");
     });
@@ -579,9 +595,28 @@
       setTimeout(() => set(typingRef, ""), 1000);
     });
 
-    function sendMessage() {
+    function sendOrEditMessage() {
       const text = messageInput.value.trim();
       if (!text) return;
+
+      if (editingMessageId) {
+        const now = new Date();
+        const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        const messageRef = ref(db, `messages/${editingMessageId}`);
+        update(messageRef, {
+          text: text,
+          time: time,
+          edited: true,
+          editedAt: now.toISOString()
+        }).then(() => {
+          console.log("Message updated successfully");
+          clearEdit();
+        }).catch((error) => {
+          console.error("Error updating message:", error);
+          alert("Failed to edit message. Please check your permissions or try again.");
+        });
+        return;
+      }
 
       if (text === "#clear") {
         remove(messagesRef).catch((error) => {
@@ -630,21 +665,29 @@
       clearReply();
     }
 
-    function editMessage(msgId, oldText) {
-      const newText = prompt("Edit your message:", oldText);
-      if (newText !== null && newText.trim() !== "") {
-        const messageRef = ref(db, `messages/${msgId}`);
-        update(messageRef, { 
-          text: newText.trim(),
-          edited: true,
-          editedAt: new Date().toISOString()
-        }).then(() => {
-          console.log("Message updated successfully");
-        }).catch((error) => {
-          console.error("Error updating message:", error);
-          alert("Failed to edit message. Please check your permissions or try again.");
-        });
-      }
+    function editMessage(msgId, msgText) {
+      editingMessageId = msgId;
+      messageInput.value = msgText;
+      messageInput.focus();
+      const sendButton = document.querySelector(".send-button");
+      sendButton.classList.add("edit-mode");
+      sendButton.textContent = "✔";
+      document.getElementById("reply-preview").style.display = "block";
+      document.getElementById("reply-text").textContent = "Editing message...";
+      document.getElementById("cancel-edit").style.display = "inline";
+      document.getElementById("cancel-reply").style.display = "none";
+    }
+
+    function clearEdit() {
+      editingMessageId = null;
+      messageInput.value = "";
+      const sendButton = document.querySelector(".send-button");
+      sendButton.classList.remove("edit-mode");
+      sendButton.textContent = "➤";
+      document.getElementById("reply-preview").style.display = "none";
+      document.getElementById("reply-text").textContent = "";
+      document.getElementById("cancel-edit").style.display = "none";
+      document.getElementById("cancel-reply").style.display = "inline";
     }
 
     function deleteMessage(msgId, forEveryone = false) {
@@ -675,9 +718,12 @@
       replyTo = null;
       document.getElementById("reply-preview").style.display = "none";
       document.getElementById("reply-text").textContent = "";
+      document.getElementById("cancel-reply").style.display = "inline";
+      document.getElementById("cancel-edit").style.display = "none";
     }
 
     document.getElementById("cancel-reply").onclick = clearReply;
+    document.getElementById("cancel-edit").onclick = clearEdit;
 
     function updateReadReceipt(msgId) {
       if (document.visibilityState === "visible") {
@@ -799,6 +845,8 @@
         replyTo = msgText;
         document.getElementById("reply-text").textContent = msgText;
         document.getElementById("reply-preview").style.display = "block";
+        document.getElementById("cancel-reply").style.display = "inline";
+        document.getElementById("cancel-edit").style.display = "none";
         messageMenu.style.display = "none";
       };
       messageMenu.appendChild(replyButton);
@@ -934,7 +982,6 @@
         const msgRow = document.querySelector(`.msg-row[data-id="${data.key}"]`);
         if (msgRow) {
           const bubble = msgRow.querySelector(".msg");
-          const timestamp = bubble.querySelector(".timestamp");
           bubble.innerHTML = "";
           if (msg.reply) {
             const replyDiv = document.createElement("div");
@@ -947,10 +994,11 @@
             <div>${displayText}${msg.edited ? ' <span style="font-size: 10px; color: #888;">(edited)</span>' : ''}</div>
             <div class="timestamp">${msg.time || ""}</div>
           `;
-          renderReactions(bubble, data.key, msg.reactions);
+          renderReactions(bubble, data.key, msg.reactions || {});
           if (msg.name === currentUser) {
             renderSeenIndicator(data.key);
           }
+          messages.scrollTop = messages.scrollHeight;
         }
       });
 
@@ -992,7 +1040,7 @@
       if (e.key === "Enter") login();
     });
 
-    window.sendMessage = sendMessage;
+    window.sendOrEditMessage = sendOrEditMessage;
     window.login = login;
     window.logout = logout;
     window.toggleTheme = toggleTheme;

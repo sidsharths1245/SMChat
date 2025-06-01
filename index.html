@@ -399,20 +399,28 @@
       align-items: center;
       gap: 10px;
     }
-    #message {
-      flex: 1;
-      padding: 10px 14px;
-      font-size: 15px;
-      border-radius: 18px;
-      border: 1px solid #ccc;
-      outline: none;
-      background: #fff;
-      transition: 0.3s;
-      resize: none;
-      height: 44px;
-      line-height: 1.4;
-      font-family: 'Segoe UI', Roboto, sans-serif;
-    }
+   #message {
+  flex: 1;
+  padding: 10px 14px;
+  font-size: 15px;
+  border-radius: 18px;
+  border: 1px solid #ccc;
+  outline: none;
+  background: #fff;
+  transition: 0.3s;
+  resize: none;
+  min-height: 22px; /* Changed from height to min-height */
+  line-height: 1.4;
+  font-family: 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden; /* Prevent scrollbar */
+}
+
+@media (max-width: 600px) {
+  #message {
+    min-height: 20px; /* Changed from height to min-height */
+    overflow: hidden; /* Ensure no scrollbar on mobile */
+  }
+}
     body.dark #message {
       background: #222;
       border: 1px solid #555;

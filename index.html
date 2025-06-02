@@ -627,802 +627,807 @@ button.send-button.edit-mode:hover {
   <audio id="notify-sound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_846a730e18.mp3" preload="auto"></audio>
 
   <script type="module">
-    if (Notification.permission !== "granted") {
-      Notification.requestPermission();
-    }
+  if (Notification.permission !== "granted") {
+    Notification.requestPermission();
+  }
 
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-    import {
-      getDatabase, ref, push, onChildAdded, onChildChanged, onChildRemoved, onValue, set, remove, update
-    } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+  import {
+    getDatabase, ref, push, onChildAdded, onChildChanged, onChildRemoved, onValue, set, remove, update
+  } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyC3ewLzG9uzaie20gvJIsliDXnU4k2VjqM",
-      authDomain: "chat-b6996.firebaseapp.com",
-      databaseURL: "https://chat-b6996-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "chat-b6996",
-      storageBucket: "chat-b6996.appspot.com",
-      messagingSenderId: "859974637172",
-      appId: "1:859974637172:web:8f7db61698bec9f081e321"
-    };
+  const firebaseConfig = {
+    apiKey: "AIzaSyC3ewLzG9uzaie20gvJIsliDXnU4k2VjqM",
+    authDomain: "chat-b6996.firebaseapp.com",
+    databaseURL: "https://chat-b6996-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "chat-b6996",
+    storageBucket: "chat-b6996.appspot.com",
+    messagingSenderId: "859974637172",
+    appId: "1:859974637172:web:8f7db61698bec9f081e321"
+  };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const messagesRef = ref(db, "messages");
-    const typingRef = ref(db, "typing");
-    const readRef = ref(db, "readReceipts");
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const messagesRef = ref(db, "messages");
+  const typingRef = ref(db, "typing");
+  const readRef = ref(db, "readReceipts");
 
-    let currentUser = localStorage.getItem("currentUser") || null;
-    let lastMessageId = null;
-    let replyTo = null;
-    let editingMessageId = null;
+  let currentUser = localStorage.getItem("currentUser") || null;
+  let lastMessageId = null;
+  let replyTo = null;
+  let editingMessageId = null;
 
-    const validUsers = {
-      "Shiv": "1234",
-      "Monika": "5678"
-    };
+  const validUsers = {
+    "Shiv": "1234",
+    "Monika": "5678"
+  };
 
-    const defaultEmojis = ['😊', '👍', '❤️', '😂', '😢'];
-    const moreEmojis = ['😎', '🙌', '😍', '😜', '😡'];
+  const defaultEmojis = ['😊', '👍', '❤️', '😂', '😢'];
+  const moreEmojis = ['😎', '🙌', '😍', '😜', '😡'];
 
-    if (localStorage.getItem("theme") === "dark") {
-      document.body.classList.add("dark");
-    }
-    updateThemeButtonText();
+  if (localStorage.getItem("theme") === "dark") {
+    document.body.classList.add("dark");
+  }
+  updateThemeButtonText();
 
-    if (currentUser && validUsers[currentUser]) {
+  if (currentUser && validUsers[currentUser]) {
+    showChat();
+    updateHeader();
+    startMessageListener();
+  } else {
+    showLogin();
+  }
+
+  function showLogin() {
+    document.getElementById("login-container").classList.remove("hidden");
+    document.getElementById("chat-container").classList.add("hidden");
+  }
+
+  function showChat() {
+    document.getElementById("login-container").classList.add("hidden");
+    document.getElementById("chat-container").classList.remove("hidden");
+  }
+
+  function login() {
+    const usernameInput = document.getElementById("username").value.trim();
+    const pin = document.getElementById("pin").value.trim();
+    const errorDiv = document.getElementById("login-error");
+
+    const username = usernameInput.charAt(0).toUpperCase() + usernameInput.slice(1).toLowerCase();
+
+    if (validUsers[username] && validUsers[username] === pin) {
+      currentUser = username;
+      localStorage.setItem("currentUser", username);
+      errorDiv.style.display = "none";
       showChat();
       updateHeader();
       startMessageListener();
     } else {
-      showLogin();
+      errorDiv.style.display = "block";
     }
+  }
 
-    function showLogin() {
-      document.getElementById("login-container").classList.remove("hidden");
-      document.getElementById("chat-container").classList.add("hidden");
-    }
+  function logout() {
+    localStorage.removeItem("currentUser");
+    currentUser = null;
+    editingMessageId = null;
+    document.getElementById("menu").style.display = "none";
+    showLogin();
+    document.getElementById("username").value = "";
+    document.getElementById("pin").value = "";
+    document.getElementById("messages").innerHTML = "";
+  }
 
-    function showChat() {
-      document.getElementById("login-container").classList.add("hidden");
-      document.getElementById("chat-container").classList.remove("hidden");
-    }
+  function toggleTheme() {
+    document.body.classList.toggle("dark");
+    localStorage.setItem("theme", document.body.classList.contains("dark") ? "dark" : "light");
+    updateThemeButtonText();
+    document.getElementById("menu").style.display = "none";
+  }
 
-    function login() {
-      const usernameInput = document.getElementById("username").value.trim();
-      const pin = document.getElementById("pin").value.trim();
-      const errorDiv = document.getElementById("login-error");
+  function updateThemeButtonText() {
+    const themeButton = document.getElementById("theme-toggle");
+    themeButton.textContent = document.body.classList.contains("dark") ? "Switch to Light Mode" : "Switch to Dark Mode";
+  }
 
-      const username = usernameInput.charAt(0).toUpperCase() + usernameInput.slice(1).toLowerCase();
+  function updateHeader() {
+    document.getElementById("chat-with").textContent =
+      currentUser === "Monika" ? "Chatting with Shiv" : "Chatting with Monika";
+  }
 
-      if (validUsers[username] && validUsers[username] === pin) {
-        currentUser = username;
-        localStorage.setItem("currentUser", username);
-        errorDiv.style.display = "none";
-        showChat();
-        updateHeader();
-        startMessageListener();
-      } else {
-        errorDiv.style.display = "block";
-      }
-    }
+  document.getElementById("menu-button").onclick = () => {
+    const menu = document.getElementById("menu");
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
+  };
 
-    function logout() {
-      localStorage.removeItem("currentUser");
-      currentUser = null;
-      editingMessageId = null;
-      document.getElementById("menu").style.display = "none";
-      showLogin();
-      document.getElementById("username").value = "";
-      document.getElementById("pin").value = "";
-      document.getElementById("messages").innerHTML = "";
-    }
-
-    function toggleTheme() {
-      document.body.classList.toggle("dark");
-      localStorage.setItem("theme", document.body.classList.contains("dark") ? "dark" : "light");
-      updateThemeButtonText();
-      document.getElementById("menu").style.display = "none";
-    }
-
-    function updateThemeButtonText() {
-      const themeButton = document.getElementById("theme-toggle");
-      themeButton.textContent = document.body.classList.contains("dark") ? "Switch to Light Mode" : "Switch to Dark Mode";
-    }
-
-    function updateHeader() {
-      document.getElementById("chat-with").textContent =
-        currentUser === "Monika" ? "Chatting with Shiv" : "Chatting with Monika";
-    }
-
-    document.getElementById("menu-button").onclick = () => {
-      const menu = document.getElementById("menu");
-      menu.style.display = menu.style.display === "block" ? "none" : "block";
-    };
-
-    document.addEventListener("click", (e) => {
-      const menu = document.getElementById("menu");
-      const menuButton = document.getElementById("menu-button");
-      const messageMenu = document.getElementById("message-menu");
-      const moreEmojisMenu = document.getElementById("more-emojis-menu");
-      const messageInput = document.getElementById("message");
-
-      // Avoid closing menus or affecting input if clicking on the input field
-      if (messageInput.contains(e.target)) {
-        return;
-      }
-
-      if (!menu.contains(e.target) && !menuButton.contains(e.target)) {
-        menu.style.display = "none";
-      }
-      if (messageMenu && !messageMenu.contains(e.target) && (!moreEmojisMenu || !moreEmojisMenu.contains(e.target))) {
-        messageMenu.style.display = "none";
-      }
-      if (moreEmojisMenu && !moreEmojisMenu.contains(e.target) && !messageMenu.contains(e.target)) {
-        moreEmojisMenu.style.display = "none";
-      }
-    });
-
+  document.addEventListener("click", (e) => {
+    const menu = document.getElementById("menu");
+    const menuButton = document.getElementById("menu-button");
+    const messageMenu = document.getElementById("message-menu");
+    const moreEmojisMenu = document.getElementById("more-emojis-menu");
     const messageInput = document.getElementById("message");
-    messageInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && e.ctrlKey) {
-        e.preventDefault();
-        sendOrEditMessage();
-      }
-      set(typingRef, currentUser + " is typing...");
-    });
-    messageInput.addEventListener("keyup", (e) => {
-      setTimeout(() => set(typingRef, ""), 1000);
-    });
 
-    function sendOrEditMessage() {
-      const text = messageInput.value.trim();
-      if (!text) return;
+    // Hide menus if clicking outside
+    if (!menu.contains(e.target) && !menuButton.contains(e.target)) {
+      menu.style.display = "none";
+    }
+    if (messageMenu && !messageMenu.contains(e.target) && (!moreEmojisMenu || !moreEmojisMenu.contains(e.target))) {
+      messageMenu.style.display = "none";
+    }
+    if (moreEmojisMenu && !moreEmojisMenu.contains(e.target) && !messageMenu.contains(e.target)) {
+      moreEmojisMenu.style.display = "none";
+    }
 
-      if (editingMessageId) {
-        const now = new Date();
-        const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        const messageRef = ref(db, `messages/${editingMessageId}`);
-        update(messageRef, {
-          text: text,
-          time: time,
-          edited: true,
-          editedAt: now.toISOString()
-        }).then(() => {
-          console.log("Message updated successfully");
-          clearEdit();
-        }).catch((error) => {
-          console.error("Error updating message:", error);
-          alert("Failed to edit message. Please check your permissions or try again.");
-        });
-        return;
-      }
+    // Hide keyboard if clicking outside the textarea
+    if (!messageInput.contains(e.target) && !messageMenu.contains(e.target) && !moreEmojisMenu.contains(e.target)) {
+      messageInput.blur();
+    }
+  });
 
-      if (text === "#clear") {
-        remove(messagesRef).catch((error) => {
-          console.error("Error clearing messages:", error);
-        });
-        remove(readRef).catch((error) => {
-          console.error("Error clearing read receipts:", error);
-        });
-        messageInput.value = "";
-        document.getElementById("messages").innerHTML = "";
-        return;
-      }
-      if (text === "#dark") {
-        document.body.classList.add("dark");
-        localStorage.setItem("theme", "dark");
-        updateThemeButtonText();
-        messageInput.value = "";
-        return;
-      }
-      if (text === "#light") {
-        document.body.classList.remove("dark");
-        localStorage.setItem("theme", "light");
-        updateThemeButtonText();
-        messageInput.value = "";
-        return;
-      }
+  const messageInput = document.getElementById("message");
+  messageInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && e.ctrlKey) {
+      e.preventDefault();
+      sendOrEditMessage();
+    }
+    set(typingRef, currentUser + " is typing...");
+  });
+  messageInput.addEventListener("keyup", (e) => {
+    setTimeout(() => set(typingRef, ""), 1000);
+  });
 
+  // Handle back button to hide keyboard
+  window.addEventListener("popstate", () => {
+    const messageInput = document.getElementById("message");
+    messageInput.blur();
+  });
+
+  function sendOrEditMessage() {
+    const text = messageInput.value.trim();
+    if (!text) return;
+
+    if (editingMessageId) {
       const now = new Date();
       const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-      push(messagesRef, {
-        name: currentUser,
-        text,
-        time,
-        timeDate: now.toISOString(),
-        reply: replyTo,
-        reactions: {}
+      const messageRef = ref(db, `messages/${editingMessageId}`);
+      update(messageRef, {
+        text: text,
+        time: time,
+        edited: true,
+        editedAt: now.toISOString()
+      }).then(() => {
+        console.log("Message updated successfully");
+        clearEdit();
+        messageInput.focus(); // Keep focus after editing
       }).catch((error) => {
-        console.error("Error sending message:", error);
+        console.error("Error updating message:", error);
+        alert("Failed to edit message. Please check your permissions or try again.");
       });
-
-      messageInput.value = "";
-      set(typingRef, "").catch((error) => {
-        console.error("Error clearing typing status:", error);
-      });
-      clearReply();
+      return;
     }
 
-    function editMessage(msgId, msgText) {
-      editingMessageId = msgId;
-      messageInput.value = msgText;
-      messageInput.focus();
-      const sendButton = document.querySelector(".send-button");
-      sendButton.classList.add("edit-mode");
-      sendButton.innerHTML = '<span class="material-icons">check</span>';
-      document.getElementById("reply-preview").style.display = "block";
-      document.getElementById("prefix-text").textContent = "Editing message";
+    if (text === "#clear") {
+      remove(messagesRef).catch((error) => {
+        console.error("Error clearing messages:", error);
+      });
+      remove(readRef).catch((error) => {
+        console.error("Error clearing read receipts:", error);
+      });
+      messageInput.value = "";
+      document.getElementById("messages").innerHTML = "";
+      messageInput.focus(); // Keep focus after clearing
+      return;
+    }
+    if (text === "#dark") {
+      document.body.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+      updateThemeButtonText();
+      messageInput.value = "";
+      messageInput.focus(); // Keep focus after theme change
+      return;
+    }
+    if (text === "#light") {
+      document.body.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+      updateThemeButtonText();
+      messageInput.value = "";
+      messageInput.focus(); // Keep focus after theme change
+      return;
+    }
+
+    const now = new Date();
+    const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+    push(messagesRef, {
+      name: currentUser,
+      text,
+      time,
+      timeDate: now.toISOString(),
+      reply: replyTo,
+      reactions: {}
+    }).catch((error) => {
+      console.error("Error sending message:", error);
+    });
+
+    messageInput.value = "";
+    set(typingRef, "").catch((error) => {
+      console.error("Error clearing typing status:", error);
+    });
+    clearReply();
+    messageInput.focus(); // Keep focus after sending
+  }
+
+  function editMessage(msgId, msgText) {
+    editingMessageId = msgId;
+    messageInput.value = msgText;
+    messageInput.focus();
+    const sendButton = document.querySelector(".send-button");
+    sendButton.classList.add("edit-mode");
+    sendButton.innerHTML = '<span class="material-icons">check</span>';
+    document.getElementById("reply-preview").style.display = "block";
+    document.getElementById("prefix-text").textContent = "Editing message";
+    document.getElementById("reply-text").textContent = msgText;
+    document.getElementById("cancel-edit").style.display = "inline";
+    document.getElementById("cancel-reply").style.display = "none";
+  }
+
+  function clearEdit() {
+    editingMessageId = null;
+    messageInput.value = "";
+    const sendButton = document.querySelector(".send-button");
+    sendButton.classList.remove("edit-mode");
+    sendButton.innerHTML = '<span class="material-icons">send</span>';
+    document.getElementById("reply-preview").style.display = "none";
+    document.getElementById("prefix-text").textContent = "";
+    document.getElementById("reply-text").textContent = "";
+    document.getElementById("cancel-edit").style.display = "none";
+    document.getElementById("cancel-reply").style.display = "inline";
+    messageInput.focus(); // Keep focus after clearing edit
+  }
+
+  function deleteMessage(msgId, forEveryone = false) {
+    const messageRef = ref(db, `messages/${msgId}`);
+    if (forEveryone) {
+      remove(messageRef).then(() => {
+        console.log("Message deleted for everyone");
+      }).catch((error) => {
+        console.error("Error deleting message for everyone:", error);
+        alert("Failed to delete message for everyone. Please check your permissions or try again.");
+      });
+    } else {
+      update(messageRef, { 
+        text: "This message was deleted",
+        deleted: true,
+        deletedBy: currentUser,
+        deletedAt: new Date().toISOString()
+      }).then(() => {
+        console.log("Message marked as deleted for me");
+      }).catch((error) => {
+        console.error("Error marking message as deleted:", error);
+        alert("Failed to delete message for me. Please check your permissions or try again.");
+      });
+    }
+    messageInput.focus(); // Keep focus after deleting
+  }
+
+  function clearReply() {
+    replyTo = null;
+    document.getElementById("reply-preview").style.display = "none";
+    document.getElementById("prefix-text").textContent = "";
+    document.getElementById("reply-text").textContent = "";
+    document.getElementById("cancel-reply").style.display = "inline";
+    document.getElementById("cancel-edit").style.display = "none";
+    messageInput.focus(); // Keep focus after clearing reply
+  }
+
+  document.getElementById("cancel-reply").onclick = clearReply;
+  document.getElementById("cancel-edit").onclick = clearEdit;
+
+  function updateReadReceipt(msgId) {
+    if (document.visibilityState === "visible") {
+      update(readRef, { [currentUser]: msgId }).catch((error) => {
+        console.error("Error updating read receipt:", error);
+      });
+    }
+  }
+
+  function renderSeenIndicator(msgId) {
+    onValue(readRef, (snapshot) => {
+      const reads = snapshot.val() || {};
+      const otherUser = currentUser === "Shiv" ? "Monika" : "Shiv";
+      if (reads[otherUser] === msgId) {
+        const lastBubble = document.querySelector(`.msg-row.right[data-id="${msgId}"] .timestamp`);
+        if (lastBubble && !lastBubble.textContent.includes("✓")) {
+          lastBubble.textContent += " ✓ Seen";
+        }
+      }
+    });
+  }
+
+  function getDateLabel(dateStr) {
+    const msgDate = new Date(dateStr);
+    const now = new Date();
+    const isToday = msgDate.toDateString() === now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (isToday) return "Today";
+    if (msgDate.toDateString() === yesterday.toDateString()) return "Yesterday";
+    return msgDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function addReaction(msgId, emoji) {
+    const reactionRef = ref(db, `messages/${msgId}/reactions/${currentUser}`);
+    set(reactionRef, emoji).then(() => {
+      console.log("Reaction added successfully");
+    }).catch((error) => {
+      console.error("Error adding reaction:", error);
+      alert("Failed to add reaction. Please check your permissions or try again.");
+    });
+    messageInput.focus(); // Keep focus after adding reaction
+  }
+
+  function removeReaction(msgId) {
+    const reactionRef = ref(db, `messages/${msgId}/reactions/${currentUser}`);
+    remove(reactionRef).then(() => {
+      console.log("Reaction removed successfully");
+    }).catch((error) => {
+      console.error("Error removing reaction:", error);
+      alert("Failed to remove reaction. Please check your permissions or try again.");
+    });
+    messageInput.focus(); // Keep focus after removing reaction
+  }
+
+  function renderReactions(bubble, msgId, reactions) {
+    let reactionDiv = bubble.querySelector('.reactions');
+    if (!reactionDiv) {
+      reactionDiv = document.createElement('div');
+      reactionDiv.className = 'reactions';
+      bubble.appendChild(reactionDiv);
+    }
+    reactionDiv.innerHTML = '';
+
+    if (reactions && Object.keys(reactions).length > 0) {
+      const emojiCounts = {};
+      for (const emoji of Object.values(reactions)) {
+        emojiCounts[emoji] = (emojiCounts[emoji] || 0) + 1;
+      }
+      for (const [emoji, count] of Object.entries(emojiCounts)) {
+        const reactionSpan = document.createElement('span');
+        reactionSpan.textContent = count > 1 ? `${emoji}${count}` : emoji;
+        reactionSpan.setAttribute('data-emoji', emoji);
+        reactionSpan.onclick = (e) => {
+          e.stopPropagation();
+          showReactionMenu(e, msgId, emoji, reactions);
+        };
+        reactionDiv.appendChild(reactionSpan);
+      }
+      reactionDiv.style.display = 'flex';
+    } else {
+      reactionDiv.style.display = 'none';
+    }
+  }
+
+  function showReactionMenu(e, msgId, selectedEmoji, reactions) {
+    e.stopPropagation();
+    let messageMenu = document.getElementById("message-menu");
+    if (!messageMenu) {
+      messageMenu = document.createElement("div");
+      messageMenu.id = "message-menu";
+      document.body.appendChild(messageMenu);
+    }
+    messageMenu.innerHTML = '';
+
+    const users = Object.entries(reactions).filter(([_, emoji]) => emoji === selectedEmoji).map(([user]) => user);
+    if (users.length > 0) {
+      const usersButton = document.createElement("button");
+      usersButton.textContent = `Reacted by: ${users.join(', ')}`;
+      usersButton.style.cursor = 'default';
+      messageMenu.appendChild(usersButton);
+    }
+
+    if (reactions[currentUser]) {
+      const removeButton = document.createElement("button");
+      removeButton.textContent = "Remove Reaction";
+      removeButton.onclick = () => {
+        removeReaction(msgId);
+        messageMenu.style.display = "none";
+      };
+      messageMenu.appendChild(removeButton);
+    }
+
+    const emojiRow = document.createElement("div");
+    emojiRow.className = "emoji-row";
+    defaultEmojis.forEach(emoji => {
+      const emojiButton = document.createElement("button");
+      emojiButton.textContent = emoji;
+      emojiButton.className = "emoji-button";
+      emojiButton.onclick = () => {
+        addReaction(msgId, emoji);
+        messageMenu.style.display = "none";
+      };
+      emojiRow.appendChild(emojiButton);
+    });
+
+    const moreButton = document.createElement("button");
+    moreButton.textContent = "➡️";
+    moreButton.className = "more-emojis";
+    moreButton.onclick = (e) => {
+      e.stopPropagation();
+      showMoreEmojisMenu(e, msgId);
+      messageMenu.style.display = "none";
+    };
+    emojiRow.appendChild(moreButton);
+    messageMenu.appendChild(emojiRow);
+
+    const rect = e.target.getBoundingClientRect();
+    const msgRow = e.target.closest('.msg-row');
+    const isRightAligned = msgRow.classList.contains('right');
+    const menuWidth = messageMenu.offsetWidth || 250;
+    const viewportWidth = window.innerWidth;
+    let leftPos = isRightAligned ? (rect.left + window.scrollX - menuWidth) : (rect.right + window.scrollX + 5);
+
+    if (leftPos + menuWidth > viewportWidth) {
+      leftPos = viewportWidth - menuWidth - 10;
+    }
+    if (leftPos < 0) {
+      leftPos = 10;
+    }
+
+    messageMenu.style.top = `${rect.bottom + window.scrollY + 5}px`;
+    messageMenu.style.left = `${leftPos}px`;
+    messageMenu.style.display = "block";
+  }
+
+  function showMoreEmojisMenu(e, msgId) {
+    e.stopPropagation();
+    let moreEmojisMenu = document.getElementById("more-emojis-menu");
+    if (!moreEmojisMenu) {
+      moreEmojisMenu = document.createElement("div");
+      moreEmojisMenu.id = "more-emojis-menu";
+      document.body.appendChild(moreEmojisMenu);
+    }
+    moreEmojisMenu.innerHTML = '';
+    moreEmojisMenu.style.display = "none";
+
+    moreEmojis.forEach(emoji => {
+      const emojiButton = document.createElement("button");
+      emojiButton.textContent = emoji;
+      emojiButton.onclick = (e) => {
+        e.stopPropagation();
+        addReaction(msgId, emoji);
+        moreEmojisMenu.style.display = "none";
+      };
+      moreEmojisMenu.appendChild(emojiButton);
+    });
+
+    moreEmojisMenu.style.visibility = "hidden";
+    moreEmojisMenu.style.display = "block";
+    const menuWidth = moreEmojisMenu.offsetWidth || 150;
+    moreEmojisMenu.style.visibility = "visible";
+    moreEmojisMenu.style.display = "none";
+
+    const rect = e.target.getBoundingClientRect();
+    const msgRow = e.target.closest('.msg-row') || document.querySelector(`.msg-row[data-id="${msgId}"]`);
+    const isRightAligned = msgRow ? msgRow.classList.contains('right') : false;
+    const viewportWidth = window.innerWidth;
+    let leftPos = isRightAligned ? (rect.left + window.scrollX - menuWidth) : (rect.right + window.scrollX + 5);
+
+    if (leftPos + menuWidth > viewportWidth) {
+      leftPos = viewportWidth - menuWidth - 10;
+    }
+    if (leftPos < 0) {
+      leftPos = 10;
+    }
+
+    moreEmojisMenu.style.top = `${rect.bottom + window.scrollY + 5}px`;
+    moreEmojisMenu.style.left = `${leftPos}px`;
+    moreEmojisMenu.style.display = "block";
+  }
+
+  function showMessageMenu(e, msgId, msgText, isCurrentUser) {
+    e.preventDefault();
+    e.stopPropagation();
+    let messageMenu = document.getElementById("message-menu");
+    if (!messageMenu) {
+      messageMenu = document.createElement("div");
+      messageMenu.id = "message-menu";
+      document.body.appendChild(messageMenu);
+    }
+    messageMenu.innerHTML = '';
+
+    const emojiRow = document.createElement("div");
+    emojiRow.className = "emoji-row";
+    defaultEmojis.forEach(emoji => {
+      const emojiButton = document.createElement("button");
+      emojiButton.textContent = emoji;
+      emojiButton.className = "emoji-button";
+      emojiButton.onclick = () => {
+        addReaction(msgId, emoji);
+        messageMenu.style.display = "none";
+      };
+      emojiRow.appendChild(emojiButton);
+    });
+
+    const moreButton = document.createElement("button");
+    moreButton.textContent = "➡️";
+    moreButton.className = "more-emojis";
+    moreButton.onclick = (e) => {
+      e.stopPropagation();
+      showMoreEmojisMenu(e, msgId);
+      messageMenu.style.display = "none";
+    };
+    emojiRow.appendChild(moreButton);
+    messageMenu.appendChild(emojiRow);
+
+    if (isCurrentUser) {
+      const editButton = document.createElement("button");
+      editButton.textContent = "Edit Message";
+      editButton.onclick = () => {
+        editMessage(msgId, msgText);
+        messageMenu.style.display = "none";
+      };
+      messageMenu.appendChild(editButton);
+
+      const deleteForMeButton = document.createElement("button");
+      deleteForMeButton.textContent = "Delete for Me";
+      deleteForMeButton.onclick = () => {
+        deleteMessage(msgId, false);
+        messageMenu.style.display = "none";
+      };
+      messageMenu.appendChild(deleteForMeButton);
+
+      const deleteForEveryoneButton = document.createElement("button");
+      deleteForEveryoneButton.textContent = "Delete for Everyone";
+      deleteForEveryoneButton.onclick = () => {
+        deleteMessage(msgId, true);
+        messageMenu.style.display = "none";
+      };
+      messageMenu.appendChild(deleteForEveryoneButton);
+    }
+
+    const replyButton = document.createElement("button");
+    replyButton.textContent = "Reply";
+    replyButton.onclick = () => {
+      replyTo = msgText;
+      document.getElementById("prefix-text").textContent = "Replying to";
       document.getElementById("reply-text").textContent = msgText;
-      document.getElementById("cancel-edit").style.display = "inline";
-      document.getElementById("cancel-reply").style.display = "none";
-    }
-
-    function clearEdit() {
-      editingMessageId = null;
-      messageInput.value = "";
-      const sendButton = document.querySelector(".send-button");
-      sendButton.classList.remove("edit-mode");
-      sendButton.innerHTML = '<span class="material-icons">send</span>';
-      document.getElementById("reply-preview").style.display = "none";
-      document.getElementById("prefix-text").textContent = "";
-      document.getElementById("reply-text").textContent = "";
-      document.getElementById("cancel-edit").style.display = "none";
-      document.getElementById("cancel-reply").style.display = "inline";
-    }
-
-    function deleteMessage(msgId, forEveryone = false) {
-      const messageRef = ref(db, `messages/${msgId}`);
-      if (forEveryone) {
-        remove(messageRef).then(() => {
-          console.log("Message deleted for everyone");
-        }).catch((error) => {
-          console.error("Error deleting message for everyone:", error);
-          alert("Failed to delete message for everyone. Please check your permissions or try again.");
-        });
-      } else {
-        update(messageRef, { 
-          text: "This message was deleted",
-          deleted: true,
-          deletedBy: currentUser,
-          deletedAt: new Date().toISOString()
-        }).then(() => {
-          console.log("Message marked as deleted for me");
-        }).catch((error) => {
-          console.error("Error marking message as deleted:", error);
-          alert("Failed to delete message for me. Please check your permissions or try again.");
-        });
-      }
-    }
-
-    function clearReply() {
-      replyTo = null;
-      document.getElementById("reply-preview").style.display = "none";
-      document.getElementById("prefix-text").textContent = "";
-      document.getElementById("reply-text").textContent = "";
+      document.getElementById("reply-preview").style.display = "block";
       document.getElementById("cancel-reply").style.display = "inline";
       document.getElementById("cancel-edit").style.display = "none";
+      messageMenu.style.display = "none";
+      messageInput.focus(); // Focus textarea after replying
+    };
+    messageMenu.appendChild(replyButton);
+
+    const rect = e.target.getBoundingClientRect();
+    const msgRow = e.target.closest('.msg-row');
+    const isRightAligned = msgRow.classList.contains('right');
+    const menuWidth = messageMenu.offsetWidth || 250;
+    const viewportWidth = window.innerWidth;
+    let leftPos = isRightAligned ? (rect.left + window.scrollX - menuWidth) : (rect.right + window.scrollX + 5);
+
+    if (leftPos + menuWidth > viewportWidth) {
+      leftPos = viewportWidth - menuWidth - 10;
+    }
+    if (leftPos < 0) {
+      leftPos = 10;
     }
 
-    document.getElementById("cancel-reply").onclick = clearReply;
-    document.getElementById("cancel-edit").onclick = clearEdit;
+    messageMenu.style.top = `${rect.bottom + window.scrollY + 5}px`;
+    messageMenu.style.left = `${leftPos}px`;
+    messageMenu.style.display = "block";
+  }
 
-    function updateReadReceipt(msgId) {
-      if (document.visibilityState === "visible") {
-        update(readRef, { [currentUser]: msgId }).catch((error) => {
-          console.error("Error updating read receipt:", error);
-        });
-      }
+  function appendMessage(id, msg) {
+    const isCurrentUser = msg.name === currentUser;
+    const messages = document.getElementById("messages");
+
+    const dateLabel = getDateLabel(msg.timeDate || new Date().toISOString());
+    const lastDateLabel = messages.getAttribute("data-last-date");
+    if (lastDateLabel !== dateLabel) {
+      const dateDiv = document.createElement("div");
+      dateDiv.textContent = dateLabel;
+      dateDiv.style.textAlign = "center";
+      dateDiv.style.fontSize = "12px";
+      dateDiv.style.color = "#888";
+      dateDiv.style.margin = "10px 0 4px";
+      messages.appendChild(dateDiv);
+      messages.setAttribute("data-last-date", dateLabel);
     }
 
-    function renderSeenIndicator(msgId) {
-      onValue(readRef, (snapshot) => {
-        const reads = snapshot.val() || {};
-        const otherUser = currentUser === "Shiv" ? "Monika" : "Shiv";
-        if (reads[otherUser] === msgId) {
-          const lastBubble = document.querySelector(`.msg-row.right[data-id="${msgId}"] .timestamp`);
-          if (lastBubble && !lastBubble.textContent.includes("✓")) {
-            lastBubble.textContent += " ✓ Seen";
-          }
+    const msgRow = document.createElement("div");
+    msgRow.className = "msg-row " + (isCurrentUser ? "right" : "left");
+    msgRow.setAttribute("data-id", id);
+
+    const bubble = document.createElement("div");
+    bubble.className = "msg";
+    if (msg.reply) {
+      const replyDiv = document.createElement("div");
+      replyDiv.className = "reply-to";
+      replyDiv.textContent = msg.reply;
+      bubble.appendChild(replyDiv);
+    }
+
+    const displayText = msg.deleted ? "This message was deleted" : msg.text;
+    bubble.innerHTML += `
+      <div>${displayText}${msg.edited ? ' <span style="font-size: 10px; color: #888;">(edited)</span>' : ''}</div>
+      <div class="timestamp">${msg.time || ""}</div>
+    `;
+
+    renderReactions(bubble, id, msg.reactions);
+
+    msgRow.appendChild(bubble);
+    messages.appendChild(msgRow);
+    messages.scrollTop = messages.scrollHeight;
+
+    let touchTimer;
+    let isSwiping = false;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchCurrentX = 0;
+
+    bubble.addEventListener("touchstart", (e) => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      isSwiping = false;
+      touchTimer = setTimeout(() => {
+        if (!isSwiping) {
+          showMessageMenu(e, id, msg.text, isCurrentUser);
         }
-      });
-    }
+      }, 500);
+    });
 
-    function getDateLabel(dateStr) {
-      const msgDate = new Date(dateStr);
-      const now = new Date();
-      const isToday = msgDate.toDateString() === now.toDateString();
-      const yesterday = new Date(now);
-      yesterday.setDate(now.getDate() - 1);
-      if (isToday) return "Today";
-      if (msgDate.toDateString() === yesterday.toDateString()) return "Yesterday";
-      return msgDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-    }
+    bubble.addEventListener("touchmove", (e) => {
+      touchCurrentX = e.touches[0].clientX;
+      const touchCurrentY = e.touches[0].clientY;
+      const deltaX = touchCurrentX - touchStartX;
+      const deltaY = touchCurrentY - touchStartY;
 
-    function addReaction(msgId, emoji) {
-      const messageInput = document.getElementById("message");
-      if (document.activeElement === messageInput) {
-        messageInput.blur(); // Remove focus from input
-      }
-      const reactionRef = ref(db, `messages/${msgId}/reactions/${currentUser}`);
-      set(reactionRef, emoji).then(() => {
-        console.log("Reaction added successfully");
-      }).catch((error) => {
-        console.error("Error adding reaction:", error);
-        alert("Failed to add reaction. Please check your permissions or try again.");
-      });
-    }
-
-    function removeReaction(msgId) {
-      const messageInput = document.getElementById("message");
-      if (document.activeElement === messageInput) {
-        messageInput.blur(); // Remove focus from input
-      }
-      const reactionRef = ref(db, `messages/${msgId}/reactions/${currentUser}`);
-      remove(reactionRef).then(() => {
-        console.log("Reaction removed successfully");
-      }).catch((error) => {
-        console.error("Error removing reaction:", error);
-        alert("Failed to remove reaction. Please check your permissions or try again.");
-      });
-    }
-
-    function renderReactions(bubble, msgId, reactions) {
-      let reactionDiv = bubble.querySelector('.reactions');
-      if (!reactionDiv) {
-        reactionDiv = document.createElement('div');
-        reactionDiv.className = 'reactions';
-        bubble.appendChild(reactionDiv);
-      }
-      reactionDiv.innerHTML = '';
-
-      if (reactions && Object.keys(reactions).length > 0) {
-        const emojiCounts = {};
-        for (const emoji of Object.values(reactions)) {
-          emojiCounts[emoji] = (emojiCounts[emoji] || 0) + 1;
+      if (Math.abs(deltaX) > 20 && Math.abs(deltaX) > Math.abs(deltaY)) {
+        isSwiping = true;
+        msgRow.classList.add("swiping");
+        if (Math.abs(deltaX) < 100) {
+          msgRow.style.transform = `translateX(${deltaX}px)`;
         }
-        for (const [emoji, count] of Object.entries(emojiCounts)) {
-          const reactionSpan = document.createElement('span');
-          reactionSpan.textContent = count > 1 ? `${emoji}${count}` : emoji;
-          reactionSpan.setAttribute('data-emoji', emoji);
-          reactionSpan.onclick = (e) => {
-            e.stopPropagation();
-            showReactionMenu(e, msgId, emoji, reactions);
-          };
-          reactionSpan.ontouchstart = (e) => {
-            e.stopPropagation(); // Prevent touch event from bubbling
-          };
-          reactionDiv.appendChild(reactionSpan);
-        }
-        reactionDiv.style.display = 'flex';
-      } else {
-        reactionDiv.style.display = 'none';
       }
-    }
+    });
 
-    function showReactionMenu(e, msgId, selectedEmoji, reactions) {
-      e.stopPropagation(); // Prevent click from bubbling up
-      let messageMenu = document.getElementById("message-menu");
-      if (!messageMenu) {
-        messageMenu = document.createElement("div");
-        messageMenu.id = "message-menu";
-        document.body.appendChild(messageMenu);
-      }
-      messageMenu.innerHTML = '';
-
-      const users = Object.entries(reactions).filter(([_, emoji]) => emoji === selectedEmoji).map(([user]) => user);
-      if (users.length > 0) {
-        const usersButton = document.createElement("button");
-        usersButton.textContent = `Reacted by: ${users.join(', ')}`;
-        usersButton.style.cursor = 'default';
-        messageMenu.appendChild(usersButton);
-      }
-
-      if (reactions[currentUser]) {
-        const removeButton = document.createElement("button");
-        removeButton.textContent = "Remove Reaction";
-        removeButton.onclick = (e) => {
-          e.stopPropagation(); // Stop propagation for remove reaction
-          removeReaction(msgId);
-          messageMenu.style.display = "none";
-        };
-        messageMenu.appendChild(removeButton);
-      }
-
-      const emojiRow = document.createElement("div");
-      emojiRow.className = "emoji-row";
-      defaultEmojis.forEach(emoji => {
-        const emojiButton = document.createElement("button");
-        emojiButton.textContent = emoji;
-        emojiButton.className = "emoji-button";
-        emojiButton.onclick = (e) => {
-          e.stopPropagation(); // Stop propagation for adding reaction
-          addReaction(msgId, emoji);
-          messageMenu.style.display = "none";
-        };
-        emojiRow.appendChild(emojiButton);
-      });
-
-      const moreButton = document.createElement("button");
-      moreButton.textContent = "➡️";
-      moreButton.className = "more-emojis";
-      moreButton.onclick = (e) => {
-        e.stopPropagation();
-        showMoreEmojisMenu(e, msgId);
-        messageMenu.style.display = "none";
-      };
-      emojiRow.appendChild(moreButton);
-      messageMenu.appendChild(emojiRow);
-
-      const rect = e.target.getBoundingClientRect();
-      const msgRow = e.target.closest('.msg-row');
-      const isRightAligned = msgRow.classList.contains('right');
-      const menuWidth = messageMenu.offsetWidth || 250;
-      const viewportWidth = window.innerWidth;
-      let leftPos = isRightAligned ? (rect.left + window.scrollX - menuWidth) : (rect.right + window.scrollX + 5);
-
-      if (leftPos + menuWidth > viewportWidth) {
-        leftPos = viewportWidth - menuWidth - 10;
-      }
-      if (leftPos < 0) {
-        leftPos = 10;
-      }
-
-      messageMenu.style.top = `${rect.bottom + window.scrollY + 5}px`;
-      messageMenu.style.left = `${leftPos}px`;
-      messageMenu.style.display = "block";
-    }
-
-    function showMoreEmojisMenu(e, msgId) {
-      e.stopPropagation();
-      let moreEmojisMenu = document.getElementById("more-emojis-menu");
-      if (!moreEmojisMenu) {
-        moreEmojisMenu = document.createElement("div");
-        moreEmojisMenu.id = "more-emojis-menu";
-        document.body.appendChild(moreEmojisMenu);
-      }
-      moreEmojisMenu.innerHTML = '';
-      moreEmojisMenu.style.display = "none";
-
-      moreEmojis.forEach(emoji => {
-        const emojiButton = document.createElement("button");
-        emojiButton.textContent = emoji;
-        emojiButton.onclick = (e) => {
-          e.stopPropagation(); // Stop propagation for adding reaction
-          addReaction(msgId, emoji);
-          moreEmojisMenu.style.display = "none";
-        };
-        moreEmojisMenu.appendChild(emojiButton);
-      });
-
-      moreEmojisMenu.style.visibility = "hidden";
-      moreEmojisMenu.style.display = "block";
-      const menuWidth = moreEmojisMenu.offsetWidth || 150;
-      moreEmojisMenu.style.visibility = "visible";
-      moreEmojisMenu.style.display = "none";
-
-      const rect = e.target.getBoundingClientRect();
-      const msgRow = e.target.closest('.msg-row') || document.querySelector(`.msg-row[data-id="${msgId}"]`);
-      const isRightAligned = msgRow ? msgRow.classList.contains('right') : false;
-      const viewportWidth = window.innerWidth;
-      let leftPos = isRightAligned ? (rect.left + window.scrollX - menuWidth) : (rect.right + window.scrollX + 5);
-
-      if (leftPos + menuWidth > viewportWidth) {
-        leftPos = viewportWidth - menuWidth - 10;
-      }
-      if (leftPos < 0) {
-        leftPos = 10;
-      }
-
-      moreEmojisMenu.style.top = `${rect.bottom + window.scrollY + 5}px`;
-      moreEmojisMenu.style.left = `${leftPos}px`;
-      moreEmojisMenu.style.display = "block";
-    }
-
-    function showMessageMenu(e, msgId, msgText, isCurrentUser) {
-      e.preventDefault();
-      e.stopPropagation();
-      let messageMenu = document.getElementById("message-menu");
-      if (!messageMenu) {
-        messageMenu = document.createElement("div");
-        messageMenu.id = "message-menu";
-        document.body.appendChild(messageMenu);
-      }
-      messageMenu.innerHTML = '';
-
-      const emojiRow = document.createElement("div");
-      emojiRow.className = "emoji-row";
-      defaultEmojis.forEach(emoji => {
-        const emojiButton = document.createElement("button");
-        emojiButton.textContent = emoji;
-        emojiButton.className = "emoji-button";
-        emojiButton.onclick = () => {
-          addReaction(msgId, emoji);
-          messageMenu.style.display = "none";
-        };
-        emojiRow.appendChild(emojiButton);
-      });
-
-      const moreButton = document.createElement("button");
-      moreButton.textContent = "➡️";
-      moreButton.className = "more-emojis";
-      moreButton.onclick = (e) => {
-        e.stopPropagation();
-        showMoreEmojisMenu(e, msgId);
-        messageMenu.style.display = "none";
-      };
-      emojiRow.appendChild(moreButton);
-      messageMenu.appendChild(emojiRow);
-
-      if (isCurrentUser) {
-        const editButton = document.createElement("button");
-        editButton.textContent = "Edit Message";
-        editButton.onclick = () => {
-          editMessage(msgId, msgText);
-          messageMenu.style.display = "none";
-        };
-        messageMenu.appendChild(editButton);
-
-        const deleteForMeButton = document.createElement("button");
-        deleteForMeButton.textContent = "Delete for Me";
-        deleteForMeButton.onclick = () => {
-          deleteMessage(msgId, false);
-          messageMenu.style.display = "none";
-        };
-        messageMenu.appendChild(deleteForMeButton);
-
-        const deleteForEveryoneButton = document.createElement("button");
-        deleteForEveryoneButton.textContent = "Delete for Everyone";
-        deleteForEveryoneButton.onclick = () => {
-          deleteMessage(msgId, true);
-          messageMenu.style.display = "none";
-        };
-        messageMenu.appendChild(deleteForEveryoneButton);
-      }
-
-      const replyButton = document.createElement("button");
-      replyButton.textContent = "Reply";
-      replyButton.onclick = () => {
-        replyTo = msgText;
-        document.getElementById("prefix-text").textContent = "Replying to";
-        document.getElementById("reply-text").textContent = msgText;
-        document.getElementById("reply-preview").style.display = "block";
-        document.getElementById("cancel-reply").style.display = "inline";
-        document.getElementById("cancel-edit").style.display = "none";
-        messageMenu.style.display = "none";
-      };
-      messageMenu.appendChild(replyButton);
-
-      const rect = e.target.getBoundingClientRect();
-      const msgRow = e.target.closest('.msg-row');
-      const isRightAligned = msgRow.classList.contains('right');
-      const menuWidth = messageMenu.offsetWidth || 250;
-      const viewportWidth = window.innerWidth;
-      let leftPos = isRightAligned ? (rect.left + window.scrollX - menuWidth) : (rect.right + window.scrollX + 5);
-
-      if (leftPos + menuWidth > viewportWidth) {
-        leftPos = viewportWidth - menuWidth - 10;
-      }
-      if (leftPos < 0) {
-        leftPos = 10;
-      }
-
-      messageMenu.style.top = `${rect.bottom + window.scrollY + 5}px`;
-      messageMenu.style.left = `${leftPos}px`;
-      messageMenu.style.display = "block";
-    }
-
-    function appendMessage(id, msg) {
-      const isCurrentUser = msg.name === currentUser;
-      const messages = document.getElementById("messages");
-
-      const dateLabel = getDateLabel(msg.timeDate || new Date().toISOString());
-      const lastDateLabel = messages.getAttribute("data-last-date");
-      if (lastDateLabel !== dateLabel) {
-        const dateDiv = document.createElement("div");
-        dateDiv.textContent = dateLabel;
-        dateDiv.style.textAlign = "center";
-        dateDiv.style.fontSize = "12px";
-        dateDiv.style.color = "#888";
-        dateDiv.style.margin = "10px 0 4px";
-        messages.appendChild(dateDiv);
-        messages.setAttribute("data-last-date", dateLabel);
-      }
-
-      const msgRow = document.createElement("div");
-      msgRow.className = "msg-row " + (isCurrentUser ? "right" : "left");
-      msgRow.setAttribute("data-id", id);
-
-      const bubble = document.createElement("div");
-      bubble.className = "msg";
-      if (msg.reply) {
-        const replyDiv = document.createElement("div");
-        replyDiv.className = "reply-to";
-        replyDiv.textContent = msg.reply;
-        bubble.appendChild(replyDiv);
-      }
-
-      const displayText = msg.deleted ? "This message was deleted" : msg.text;
-      bubble.innerHTML += `
-        <div>${displayText}${msg.edited ? ' <span style="font-size: 10px; color: #888;">(edited)</span>' : ''}</div>
-        <div class="timestamp">${msg.time || ""}</div>
-      `;
-
-      renderReactions(bubble, id, msg.reactions);
-
-      msgRow.appendChild(bubble);
-      messages.appendChild(msgRow);
-      messages.scrollTop = messages.scrollHeight;
-
-      let touchTimer;
-      let isSwiping = false;
-      let touchStartX = 0;
-      let touchStartY = 0;
-      let touchCurrentX = 0;
-
-      bubble.addEventListener("touchstart", (e) => {
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-        isSwiping = false;
-        touchTimer = setTimeout(() => {
-          if (!isSwiping) {
-            showMessageMenu(e, id, msg.text, isCurrentUser);
-          }
-        }, 500);
-      });
-
-      bubble.addEventListener("touchmove", (e) => {
-        touchCurrentX = e.touches[0].clientX;
-        const touchCurrentY = e.touches[0].clientY;
+    bubble.addEventListener("touchend", (e) => {
+      clearTimeout(touchTimer);
+      if (isSwiping) {
         const deltaX = touchCurrentX - touchStartX;
-        const deltaY = touchCurrentY - touchStartY;
-
-        // Determine if it's a swipe (horizontal movement) or just a touch (vertical scroll)
-        if (Math.abs(deltaX) > 20 && Math.abs(deltaX) > Math.abs(deltaY)) {
-          isSwiping = true;
-          msgRow.classList.add("swiping");
-          if (Math.abs(deltaX) < 100) {
-            msgRow.style.transform = `translateX(${deltaX}px)`;
-          }
+        msgRow.classList.remove("swiping");
+        msgRow.style.transform = "translateX(0)";
+        if (Math.abs(deltaX) > 50) {
+          replyTo = msg.text;
+          document.getElementById("prefix-text").textContent = "Replying to";
+          document.getElementById("reply-text").textContent = msg.text;
+          document.getElementById("reply-preview").style.display = "block";
+          document.getElementById("cancel-reply").style.display = "inline";
+          document.getElementById("cancel-edit").style.display = "none";
+          messageInput.focus(); // Focus textarea after swiping to reply
         }
-      });
+      }
+    });
 
-      bubble.addEventListener("touchend", (e) => {
-        clearTimeout(touchTimer);
-        if (isSwiping) {
-          const deltaX = touchCurrentX - touchStartX;
-          msgRow.classList.remove("swiping");
-          msgRow.style.transform = "translateX(0)";
-          if (Math.abs(deltaX) > 50) {
-            replyTo = msg.text;
-            document.getElementById("prefix-text").textContent = "Replying to";
-            document.getElementById("reply-text").textContent = msg.text;
-            document.getElementById("reply-preview").style.display = "block";
-            document.getElementById("cancel-reply").style.display = "inline";
-            document.getElementById("cancel-edit").style.display = "none";
-          }
-        }
-      });
+    bubble.addEventListener("contextmenu", (e) => {
+      showMessageMenu(e, id, msg.text, isCurrentUser);
+    });
 
-      bubble.addEventListener("contextmenu", (e) => {
-        showMessageMenu(e, id, msg.text, isCurrentUser);
-      });
+    if (!isCurrentUser) updateReadReceipt(id);
+    else renderSeenIndicator(id);
 
-      if (!isCurrentUser) updateReadReceipt(id);
-      else renderSeenIndicator(id);
+    onValue(ref(db, `messages/${id}/reactions`), (snapshot) => {
+      const reactions = snapshot.val() || {};
+      renderReactions(bubble, id, reactions);
+    });
+  }
 
-      onValue(ref(db, `messages/${id}/reactions`), (snapshot) => {
-        const reactions = snapshot.val() || {};
-        renderReactions(bubble, id, reactions);
-      });
-    }
+  function startMessageListener() {
+    const messages = document.getElementById("messages");
+    messages.innerHTML = "";
+    messages.setAttribute("data-last-date", "");
 
-    function startMessageListener() {
-      const messages = document.getElementById("messages");
+    onValue(messagesRef, (snapshot) => {
       messages.innerHTML = "";
       messages.setAttribute("data-last-date", "");
+      if (snapshot.exists()) {
+        snapshot.forEach((child) => {
+          appendMessage(child.key, child.val());
+        });
+      }
+      messages.scrollTop = messages.scrollHeight;
+    }, { onlyOnce: true });
 
-      onValue(messagesRef, (snapshot) => {
-        messages.innerHTML = "";
-        messages.setAttribute("data-last-date", "");
-        if (snapshot.exists()) {
-          snapshot.forEach((child) => {
-            appendMessage(child.key, child.val());
-          });
-        }
-        messages.scrollTop = messages.scrollHeight;
-      }, { onlyOnce: true });
+    onChildAdded(messagesRef, (data) => {
+      const msg = data.val();
+      const isFromOtherUser = msg.name !== currentUser;
 
-      onChildAdded(messagesRef, (data) => {
-        const msg = data.val();
-        const isFromOtherUser = msg.name !== currentUser;
+      if (!document.querySelector(`.msg-row[data-id="${data.key}"]`)) {
+        appendMessage(data.key, msg);
 
-        if (!document.querySelector(`.msg-row[data-id="${data.key}"]`)) {
-          appendMessage(data.key, msg);
+        if (lastMessageId !== data.key && isFromOtherUser) {
+          document.getElementById("notify-sound").play();
 
-          if (lastMessageId !== data.key && isFromOtherUser) {
-            document.getElementById("notify-sound").play();
-
-            if (document.visibilityState !== "visible" && Notification.permission === "granted") {
-              new Notification(`New message from ${msg.name}`, {
-                body: msg.text,
-                icon: "https://cdn-icons-png.flaticon.com/512/1077/1077012.png"
-              });
-            }
+          if (document.visibilityState !== "visible" && Notification.permission === "granted") {
+            new Notification(`New message from ${msg.name}`, {
+              body: msg.text,
+              icon: "https://cdn-icons-png.flaticon.com/512/1077/1077012.png"
+            });
           }
-
-          lastMessageId = data.key;
         }
-      });
 
-      onChildChanged(messagesRef, (data) => {
-        const msg = data.val();
-        const msgRow = document.querySelector(`.msg-row[data-id="${data.key}"]`);
-        if (msgRow) {
-          const bubble = msgRow.querySelector(".msg");
-          bubble.innerHTML = "";
-          if (msg.reply) {
-            const replyDiv = document.createElement("div");
-            replyDiv.className = "reply-to";
-            replyDiv.textContent = msg.reply;
-            bubble.appendChild(replyDiv);
-          }
-          const displayText = msg.deleted ? "This message was deleted" : msg.text;
-          bubble.innerHTML += `
-            <div>${displayText}${msg.edited ? ' <span style="font-size: 10px; color: #888;">(edited)</span>' : ''}</div>
-            <div class="timestamp">${msg.time || ""}</div>
-          `;
-          renderReactions(bubble, data.key, msg.reactions || {});
-          if (msg.name === currentUser) {
-            renderSeenIndicator(data.key);
-          }
-          messages.scrollTop = messages.scrollHeight;
-        }
-      });
-
-      onChildRemoved(messagesRef, (data) => {
-        const msgRow = document.querySelector(`.msg-row[data-id="${data.key}"]`);
-        if (msgRow) {
-          msgRow.remove();
-        }
-        const messagesDiv = document.getElementById("messages");
-        const remainingMessages = messagesDiv.querySelectorAll(".msg-row");
-        if (remainingMessages.length === 0) {
-          messagesDiv.setAttribute("data-last-date", "");
-        } else {
-          messagesDiv.innerHTML = "";
-          messagesDiv.setAttribute("data-last-date", "");
-          onValue(messagesRef, (snapshot) => {
-            if (snapshot.exists()) {
-              snapshot.forEach((child) => {
-                appendMessage(child.key, child.val());
-              });
-            }
-            messages.scrollTop = messages.scrollHeight;
-          }, { onlyOnce: true });
-        }
-      });
-    }
-
-    onValue(typingRef, (snapshot) => {
-      document.getElementById("typing").textContent = snapshot.val() || "";
-    });
-
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible" && currentUser) {
-        startMessageListener();
+        lastMessageId = data.key;
       }
     });
 
-    document.getElementById("pin").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") login();
+    onChildChanged(messagesRef, (data) => {
+      const msg = data.val();
+      const msgRow = document.querySelector(`.msg-row[data-id="${data.key}"]`);
+      if (msgRow) {
+        const bubble = msgRow.querySelector(".msg");
+        bubble.innerHTML = "";
+        if (msg.reply) {
+          const replyDiv = document.createElement("div");
+          replyDiv.className = "reply-to";
+          replyDiv.textContent = msg.reply;
+          bubble.appendChild(replyDiv);
+        }
+        const displayText = msg.deleted ? "This message was deleted" : msg.text;
+        bubble.innerHTML += `
+          <div>${displayText}${msg.edited ? ' <span style="font-size: 10px; color: #888;">(edited)</span>' : ''}</div>
+          <div class="timestamp">${msg.time || ""}</div>
+        `;
+        renderReactions(bubble, data.key, msg.reactions || {});
+        if (msg.name === currentUser) {
+          renderSeenIndicator(data.key);
+        }
+        messages.scrollTop = messages.scrollHeight;
+      }
     });
 
-    window.sendOrEditMessage = sendOrEditMessage;
-    window.login = login;
-    window.logout = logout;
-    window.toggleTheme = toggleTheme;
-  </script>
+    onChildRemoved(messagesRef, (data) => {
+      const msgRow = document.querySelector(`.msg-row[data-id="${data.key}"]`);
+      if (msgRow) {
+        msgRow.remove();
+      }
+      const messagesDiv = document.getElementById("messages");
+      const remainingMessages = messagesDiv.querySelectorAll(".msg-row");
+      if (remainingMessages.length === 0) {
+        messagesDiv.setAttribute("data-last-date", "");
+      } else {
+        messagesDiv.innerHTML = "";
+        messagesDiv.setAttribute("data-last-date", "");
+        onValue(messagesRef, (snapshot) => {
+          if (snapshot.exists()) {
+            snapshot.forEach((child) => {
+              appendMessage(child.key, child.val());
+            });
+          }
+          messages.scrollTop = messages.scrollHeight;
+        }, { onlyOnce: true });
+      }
+    });
+  }
+
+  onValue(typingRef, (snapshot) => {
+    document.getElementById("typing").textContent = snapshot.val() || "";
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && currentUser) {
+      startMessageListener();
+    }
+  });
+
+  document.getElementById("pin").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") login();
+  });
+
+  window.sendOrEditMessage = sendOrEditMessage;
+  window.login = login;
+  window.logout = logout;
+  window.toggleTheme = toggleTheme;
+</script>
 </body>
 </html>

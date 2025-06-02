@@ -168,14 +168,14 @@ body.dark #message-menu, body.dark #reaction-menu {
   flex-direction: row;
   align-items: center;
   padding: 8px 12px;
-  gap: 5px; /* Reduced from 10px for tighter spacing */
+  gap: 5px;
 }
 #message-menu .emoji-button {
   font-size: 18px;
   background: none;
   border: none;
   cursor: pointer;
-  padding: 2px; /* Reduced from 5px for tighter spacing */
+  padding: 2px;
   width: 30px;
   text-align: center;
 }
@@ -562,15 +562,15 @@ button.send-button.edit-mode:hover {
   }
   #message-menu .emoji-row {
     display: flex;
-    flex-direction: row; /* Ensure horizontal layout */
+    flex-direction: row;
     align-items: center;
     padding: 8px 12px;
-    gap: 5px; /* Maintain reduced spacing */
+    gap: 5px;
   }
   #message-menu .emoji-button {
-    font-size: 16px; /* Slightly smaller for mobile */
-    padding: 2px; /* Maintain reduced padding */
-    width: 28px; /* Slightly smaller for mobile */
+    font-size: 16px;
+    padding: 2px;
+    width: 28px;
   }
   #message {
     min-height: 40px;
@@ -1033,9 +1033,24 @@ button.send-button.edit-mode:hover {
       emojiRow.appendChild(moreButton);
       messageMenu.appendChild(emojiRow);
 
+      // Position the menu
       const rect = e.target.getBoundingClientRect();
-      messageMenu.style.top = `${rect.bottom + window.scrollY}px`;
-      messageMenu.style.left = `${rect.left + window.scrollX}px`;
+      const msgRow = e.target.closest('.msg-row');
+      const isRightAligned = msgRow.classList.contains('right');
+      const menuWidth = messageMenu.offsetWidth || 250; // Default to 250px if offsetWidth is not yet available
+      const viewportWidth = window.innerWidth;
+      let leftPos = isRightAligned ? (rect.left + window.scrollX - menuWidth) : (rect.right + window.scrollX + 5);
+
+      // Adjust to prevent overflow
+      if (leftPos + menuWidth > viewportWidth) {
+        leftPos = viewportWidth - menuWidth - 10; // 10px padding from right edge
+      }
+      if (leftPos < 0) {
+        leftPos = 10; // 10px padding from left edge
+      }
+
+      messageMenu.style.top = `${rect.bottom + window.scrollY + 5}px`;
+      messageMenu.style.left = `${leftPos}px`;
       messageMenu.style.display = "block";
     }
 
@@ -1058,9 +1073,24 @@ button.send-button.edit-mode:hover {
         moreEmojisMenu.appendChild(emojiButton);
       });
 
+      // Position the menu
       const rect = e.target.getBoundingClientRect();
-      moreEmojisMenu.style.top = `${rect.bottom + window.scrollY}px`;
-      moreEmojisMenu.style.left = `${rect.left + window.scrollX}px`;
+      const msgRow = e.target.closest('.msg-row');
+      const isRightAligned = msgRow.classList.contains('right');
+      const menuWidth = moreEmojisMenu.offsetWidth || 150; // Default to 150px if offsetWidth is not yet available
+      const viewportWidth = window.innerWidth;
+      let leftPos = isRightAligned ? (rect.left + window.scrollX - menuWidth) : (rect.right + window.scrollX + 5);
+
+      // Adjust to prevent overflow
+      if (leftPos + menuWidth > viewportWidth) {
+        leftPos = viewportWidth - menuWidth - 10; // 10px padding from right edge
+      }
+      if (leftPos < 0) {
+        leftPos = 10; // 10px padding from left edge
+      }
+
+      moreEmojisMenu.style.top = `${rect.bottom + window.scrollY + 5}px`;
+      moreEmojisMenu.style.left = `${leftPos}px`;
       moreEmojisMenu.style.display = "block";
     }
 
@@ -1136,9 +1166,24 @@ button.send-button.edit-mode:hover {
       };
       messageMenu.appendChild(replyButton);
 
+      // Position the menu
       const rect = e.target.getBoundingClientRect();
-      messageMenu.style.top = `${rect.bottom + window.scrollY}px`;
-      messageMenu.style.left = `${rect.left + window.scrollX}px`;
+      const msgRow = e.target.closest('.msg-row');
+      const isRightAligned = msgRow.classList.contains('right');
+      const menuWidth = messageMenu.offsetWidth || 250; // Default to 250px if offsetWidth is not yet available
+      const viewportWidth = window.innerWidth;
+      let leftPos = isRightAligned ? (rect.left + window.scrollX - menuWidth) : (rect.right + window.scrollX + 5);
+
+      // Adjust to prevent overflow
+      if (leftPos + menuWidth > viewportWidth) {
+        leftPos = viewportWidth - menuWidth - 10; // 10px padding from right edge
+      }
+      if (leftPos < 0) {
+        leftPos = 10; // 10px padding from left edge
+      }
+
+      messageMenu.style.top = `${rect.bottom + window.scrollY + 5}px`;
+      messageMenu.style.left = `${leftPos}px`;
       messageMenu.style.display = "block";
     }
 

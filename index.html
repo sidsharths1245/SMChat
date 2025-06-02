@@ -1027,6 +1027,7 @@ button.send-button.edit-mode:hover {
       moreButton.textContent = "➡️";
       moreButton.className = "more-emojis";
       moreButton.onclick = (e) => {
+        e.stopPropagation(); // Prevent global click handler from closing the menu
         showMoreEmojisMenu(e, msgId);
         messageMenu.style.display = "none";
       };
@@ -1062,22 +1063,31 @@ button.send-button.edit-mode:hover {
         document.body.appendChild(moreEmojisMenu);
       }
       moreEmojisMenu.innerHTML = '';
+      moreEmojisMenu.style.display = "none"; // Hide initially to calculate dimensions
 
+      // Populate the menu
       moreEmojis.forEach(emoji => {
         const emojiButton = document.createElement("button");
         emojiButton.textContent = emoji;
-        emojiButton.onclick = () => {
+        emojiButton.onclick = (e) => {
+          e.stopPropagation(); // Prevent closing when clicking an emoji
           addReaction(msgId, emoji);
           moreEmojisMenu.style.display = "none";
         };
         moreEmojisMenu.appendChild(emojiButton);
       });
 
+      // Force render to get accurate dimensions
+      moreEmojisMenu.style.visibility = "hidden";
+      moreEmojisMenu.style.display = "block";
+      const menuWidth = moreEmojisMenu.offsetWidth || 150; // Default to 150px if offsetWidth is not available
+      moreEmojisMenu.style.visibility = "visible";
+      moreEmojisMenu.style.display = "none"; // Hide again until positioned
+
       // Position the menu
       const rect = e.target.getBoundingClientRect();
-      const msgRow = e.target.closest('.msg-row');
-      const isRightAligned = msgRow.classList.contains('right');
-      const menuWidth = moreEmojisMenu.offsetWidth || 150; // Default to 150px if offsetWidth is not yet available
+      const msgRow = e.target.closest('.msg-row') || document.querySelector(`.msg-row[data-id="${msgId}"]`);
+      const isRightAligned = msgRow ? msgRow.classList.contains('right') : false;
       const viewportWidth = window.innerWidth;
       let leftPos = isRightAligned ? (rect.left + window.scrollX - menuWidth) : (rect.right + window.scrollX + 5);
 
@@ -1121,6 +1131,7 @@ button.send-button.edit-mode:hover {
       moreButton.textContent = "➡️";
       moreButton.className = "more-emojis";
       moreButton.onclick = (e) => {
+        e.stopPropagation(); // Prevent global click handler from closing the menu
         showMoreEmojisMenu(e, msgId);
         messageMenu.style.display = "none";
       };

@@ -972,7 +972,7 @@ button.send-button.edit-mode:hover {
           reactionSpan.textContent = count > 1 ? `${emoji}${count}` : emoji;
           reactionSpan.setAttribute('data-emoji', emoji);
           reactionSpan.onclick = (e) => {
-            e.stopPropagation();
+            e.stopPropagation(); // Prevent triggering message menu or reply
             showReactionMenu(e, msgId, emoji, reactions);
           };
           reactionDiv.appendChild(reactionSpan);
@@ -984,6 +984,7 @@ button.send-button.edit-mode:hover {
     }
 
     function showReactionMenu(e, msgId, selectedEmoji, reactions) {
+      e.stopPropagation(); // Prevent triggering message menu
       let messageMenu = document.getElementById("message-menu");
       if (!messageMenu) {
         messageMenu = document.createElement("div");
@@ -1027,27 +1028,25 @@ button.send-button.edit-mode:hover {
       moreButton.textContent = "➡️";
       moreButton.className = "more-emojis";
       moreButton.onclick = (e) => {
-        e.stopPropagation(); // Prevent global click handler from closing the menu
+        e.stopPropagation();
         showMoreEmojisMenu(e, msgId);
         messageMenu.style.display = "none";
       };
       emojiRow.appendChild(moreButton);
       messageMenu.appendChild(emojiRow);
 
-      // Position the menu
       const rect = e.target.getBoundingClientRect();
       const msgRow = e.target.closest('.msg-row');
       const isRightAligned = msgRow.classList.contains('right');
-      const menuWidth = messageMenu.offsetWidth || 250; // Default to 250px if offsetWidth is not yet available
+      const menuWidth = messageMenu.offsetWidth || 250;
       const viewportWidth = window.innerWidth;
       let leftPos = isRightAligned ? (rect.left + window.scrollX - menuWidth) : (rect.right + window.scrollX + 5);
 
-      // Adjust to prevent overflow
       if (leftPos + menuWidth > viewportWidth) {
-        leftPos = viewportWidth - menuWidth - 10; // 10px padding from right edge
+        leftPos = viewportWidth - menuWidth - 10;
       }
       if (leftPos < 0) {
-        leftPos = 10; // 10px padding from left edge
+        leftPos = 10;
       }
 
       messageMenu.style.top = `${rect.bottom + window.scrollY + 5}px`;
@@ -1056,6 +1055,7 @@ button.send-button.edit-mode:hover {
     }
 
     function showMoreEmojisMenu(e, msgId) {
+      e.stopPropagation();
       let moreEmojisMenu = document.getElementById("more-emojis-menu");
       if (!moreEmojisMenu) {
         moreEmojisMenu = document.createElement("div");
@@ -1063,40 +1063,36 @@ button.send-button.edit-mode:hover {
         document.body.appendChild(moreEmojisMenu);
       }
       moreEmojisMenu.innerHTML = '';
-      moreEmojisMenu.style.display = "none"; // Hide initially to calculate dimensions
+      moreEmojisMenu.style.display = "none";
 
-      // Populate the menu
       moreEmojis.forEach(emoji => {
         const emojiButton = document.createElement("button");
         emojiButton.textContent = emoji;
         emojiButton.onclick = (e) => {
-          e.stopPropagation(); // Prevent closing when clicking an emoji
+          e.stopPropagation();
           addReaction(msgId, emoji);
           moreEmojisMenu.style.display = "none";
         };
         moreEmojisMenu.appendChild(emojiButton);
       });
 
-      // Force render to get accurate dimensions
       moreEmojisMenu.style.visibility = "hidden";
       moreEmojisMenu.style.display = "block";
-      const menuWidth = moreEmojisMenu.offsetWidth || 150; // Default to 150px if offsetWidth is not available
+      const menuWidth = moreEmojisMenu.offsetWidth || 150;
       moreEmojisMenu.style.visibility = "visible";
-      moreEmojisMenu.style.display = "none"; // Hide again until positioned
+      moreEmojisMenu.style.display = "none";
 
-      // Position the menu
       const rect = e.target.getBoundingClientRect();
       const msgRow = e.target.closest('.msg-row') || document.querySelector(`.msg-row[data-id="${msgId}"]`);
       const isRightAligned = msgRow ? msgRow.classList.contains('right') : false;
       const viewportWidth = window.innerWidth;
       let leftPos = isRightAligned ? (rect.left + window.scrollX - menuWidth) : (rect.right + window.scrollX + 5);
 
-      // Adjust to prevent overflow
       if (leftPos + menuWidth > viewportWidth) {
-        leftPos = viewportWidth - menuWidth - 10; // 10px padding from right edge
+        leftPos = viewportWidth - menuWidth - 10;
       }
       if (leftPos < 0) {
-        leftPos = 10; // 10px padding from left edge
+        leftPos = 10;
       }
 
       moreEmojisMenu.style.top = `${rect.bottom + window.scrollY + 5}px`;
@@ -1106,6 +1102,7 @@ button.send-button.edit-mode:hover {
 
     function showMessageMenu(e, msgId, msgText, isCurrentUser) {
       e.preventDefault();
+      e.stopPropagation();
       let messageMenu = document.getElementById("message-menu");
       if (!messageMenu) {
         messageMenu = document.createElement("div");
@@ -1131,7 +1128,7 @@ button.send-button.edit-mode:hover {
       moreButton.textContent = "➡️";
       moreButton.className = "more-emojis";
       moreButton.onclick = (e) => {
-        e.stopPropagation(); // Prevent global click handler from closing the menu
+        e.stopPropagation();
         showMoreEmojisMenu(e, msgId);
         messageMenu.style.display = "none";
       };
@@ -1166,31 +1163,29 @@ button.send-button.edit-mode:hover {
 
       const replyButton = document.createElement("button");
       replyButton.textContent = "Reply";
-      replyButton.onclick = () => {
-        replyTo = msgText;
-        document.getElementById("prefix-text").textContent = "Replying to";
-        document.getElementById("reply-text").textContent = msgText;
-        document.getElementById("reply-preview").style.display = "block";
-        document.getElementById("cancel-reply").style.display = "inline";
-        document.getElementById("cancel-edit").style.display = "none";
-        messageMenu.style.display = "none";
-      };
+  replyButton.onclick = () => {
+    replyTo = msgText;
+    document.getElementById("prefix-text").textContent = "Replying to";
+    document.getElementById("reply-text").textContent = msgText;
+    document.getElementById("reply-preview").style.display = "block";
+    document.getElementById("cancel-reply").style.display = "inline";
+    document.getElementById("cancel-edit").style.display = "none";
+    messageMenu.style.display = "none";
+  };
       messageMenu.appendChild(replyButton);
 
-      // Position the menu
       const rect = e.target.getBoundingClientRect();
       const msgRow = e.target.closest('.msg-row');
       const isRightAligned = msgRow.classList.contains('right');
-      const menuWidth = messageMenu.offsetWidth || 250; // Default to 250px if offsetWidth is not yet available
+      const menuWidth = messageMenu.offsetWidth || 250;
       const viewportWidth = window.innerWidth;
       let leftPos = isRightAligned ? (rect.left + window.scrollX - menuWidth) : (rect.right + window.scrollX + 5);
 
-      // Adjust to prevent overflow
       if (leftPos + menuWidth > viewportWidth) {
-        leftPos = viewportWidth - menuWidth - 10; // 10px padding from right edge
+        leftPos = viewportWidth - menuWidth - 10;
       }
       if (leftPos < 0) {
-        leftPos = 10; // 10px padding from left edge
+        leftPos = 10;
       }
 
       messageMenu.style.top = `${rect.bottom + window.scrollY + 5}px`;
@@ -1241,47 +1236,57 @@ button.send-button.edit-mode:hover {
       messages.scrollTop = messages.scrollHeight;
 
       let touchTimer;
+      let isSwiping = false;
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let touchCurrentX = 0;
+
       bubble.addEventListener("touchstart", (e) => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        isSwiping = false;
         touchTimer = setTimeout(() => {
-          showMessageMenu(e, id, msg.text, isCurrentUser);
+          if (!isSwiping) {
+            showMessageMenu(e, id, msg.text, isCurrentUser);
+          }
         }, 500);
       });
-      bubble.addEventListener("touchend", () => {
-        clearTimeout(touchTimer);
+
+      bubble.addEventListener("touchmove", (e) => {
+        touchCurrentX = e.touches[0].clientX;
+        const touchCurrentY = e.touches[0].clientY;
+        const deltaX = touchCurrentX - touchStartX;
+        const deltaY = touchCurrentY - touchStartY;
+
+        // Determine if it's a swipe (horizontal movement) or just a touch (vertical scroll)
+        if (Math.abs(deltaX) > 20 && Math.abs(deltaX) > Math.abs(deltaY)) {
+          isSwiping = true;
+          msgRow.classList.add("swiping");
+          if (Math.abs(deltaX) < 100) {
+            msgRow.style.transform = `translateX(${deltaX}px)`;
+          }
+        }
       });
-      bubble.addEventListener("touchmove", () => {
+
+      bubble.addEventListener("touchend", (e) => {
         clearTimeout(touchTimer);
+        if (isSwiping) {
+          const deltaX = touchCurrentX - touchStartX;
+          msgRow.classList.remove("swiping");
+          msgRow.style.transform = "translateX(0)";
+          if (Math.abs(deltaX) > 50) {
+            replyTo = msg.text;
+            document.getElementById("prefix-text").textContent = "Replying to";
+            document.getElementById("reply-text").textContent = msg.text;
+            document.getElementById("reply-preview").style.display = "block";
+            document.getElementById("cancel-reply").style.display = "inline";
+            document.getElementById("cancel-edit").style.display = "none";
+          }
+        }
       });
 
       bubble.addEventListener("contextmenu", (e) => {
         showMessageMenu(e, id, msg.text, isCurrentUser);
-      });
-
-      let touchStartX = 0;
-      let touchCurrentX = 0;
-      bubble.addEventListener("touchstart", (e) => {
-        touchStartX = e.touches[0].clientX;
-        msgRow.classList.add("swiping");
-      });
-      bubble.addEventListener("touchmove", (e) => {
-        touchCurrentX = e.touches[0].clientX;
-        const deltaX = touchCurrentX - touchStartX;
-        if (Math.abs(deltaX) < 100) {
-          msgRow.style.transform = `translateX(${deltaX}px)`;
-        }
-      });
-      bubble.addEventListener("touchend", (e) => {
-        const deltaX = touchCurrentX - touchStartX;
-        msgRow.classList.remove("swiping");
-        msgRow.style.transform = "translateX(0)";
-        if (Math.abs(deltaX) > 50) {
-          replyTo = msg.text;
-          document.getElementById("prefix-text").textContent = "Replying to";
-          document.getElementById("reply-text").textContent = msg.text;
-          document.getElementById("reply-preview").style.display = "block";
-          document.getElementById("cancel-reply").style.display = "inline";
-          document.getElementById("cancel-edit").style.display = "none";
-        }
       });
 
       if (!isCurrentUser) updateReadReceipt(id);

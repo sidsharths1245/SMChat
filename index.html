@@ -963,7 +963,7 @@ button.send-button.edit-mode:hover {
       console.error("Error adding reaction:", error);
       alert("Failed to add reaction. Please check your permissions or try again.");
     });
-    messageInput.focus(); // Keep focus after adding reaction
+    // Removed messageInput.focus() to prevent triggering input field
   }
 
   function removeReaction(msgId) {
@@ -974,7 +974,7 @@ button.send-button.edit-mode:hover {
       console.error("Error removing reaction:", error);
       alert("Failed to remove reaction. Please check your permissions or try again.");
     });
-    messageInput.focus(); // Keep focus after removing reaction
+    // Removed messageInput.focus() to prevent triggering input field
   }
 
   function renderReactions(bubble, msgId, reactions) {
